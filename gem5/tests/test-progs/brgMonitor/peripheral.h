@@ -47,6 +47,8 @@ void	periInit(uint8_t *cmd_reg);
 
 void	tmpSense(int *tmp, uint8_t *cmd_reg);
 void	accSense(int *x, int *y, int *z, uint8_t *cmd_reg);
+
+
 void	rfTrans(uint8_t *cmd_reg, uint8_t *payload);
 void	generalVdevActive(uint8_t *cmd_reg);
 
@@ -54,4 +56,3 @@ void	generalVdevActive(uint8_t *cmd_reg);
 
 
 #endif
-

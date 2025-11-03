@@ -9,7 +9,7 @@ if os.path.exists("m5out/power_failure"):
 	os.remove("m5out/power_failure")
 
 
-import sys  
+import sys
 cap = float(sys.argv[1])
 profilemult = float(sys.argv[2])
 print "cap: %f; energy: %f.\n" %(cap, profilemult)
@@ -27,21 +27,21 @@ system.mem_ranges = [AddrRange('512MB')]
 
 #vdev
 system.has_vdev = 1
-system.vdev_ranges = [AddrRange('512MB', '512MB'), 
-			AddrRange('513MB', '513MB'), 
-			AddrRange('514MB', '514MB'), 
-			AddrRange('515MB', '515MB'), 
-			AddrRange('516MB', '516MB'), 
-			AddrRange('517MB', '517MB'), 
-			AddrRange('518MB', '518MB'), 
+system.vdev_ranges = [AddrRange('512MB', '512MB'),
+			AddrRange('513MB', '513MB'),
+			AddrRange('514MB', '514MB'),
+			AddrRange('515MB', '515MB'),
+			AddrRange('516MB', '516MB'),
+			AddrRange('517MB', '517MB'),
+			AddrRange('518MB', '518MB'),
 			AddrRange('519MB', '519MB')]
-system.vaddr_vdev_ranges = [AddrRange('1000MB', '1000MB'), 
-			AddrRange('1001MB', '1001MB'), 
-			AddrRange('1002MB', '1002MB'), 
-			AddrRange('1003MB', '1003MB'), 
-			AddrRange('1004MB', '1004MB'), 
-			AddrRange('1005MB', '1005MB'), 
-			AddrRange('1006MB', '1006MB'), 
+system.vaddr_vdev_ranges = [AddrRange('1000MB', '1000MB'),
+			AddrRange('1001MB', '1001MB'),
+			AddrRange('1002MB', '1002MB'),
+			AddrRange('1003MB', '1003MB'),
+			AddrRange('1004MB', '1004MB'),
+			AddrRange('1005MB', '1005MB'),
+			AddrRange('1006MB', '1006MB'),
 			AddrRange('1007MB', '1007MB')]
 
 ###################################
@@ -98,7 +98,7 @@ system.vdev0.cpu = system.cpu
 # Access address range for the device
 system.vdev0.range = system.vdev_ranges[0]
 # The energy consumption of each cycle at power-off, idle and active mode.
-system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6), Float(1.35)] 
+system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6), Float(1.35)]
 # Delay of an active task
 system.vdev0.delay_self = '1ms'
 # Delay of the task returning interrupt

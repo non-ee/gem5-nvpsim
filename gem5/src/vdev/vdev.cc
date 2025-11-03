@@ -1,6 +1,6 @@
 //
 // 	Source code file for Virtual Device
-// 
+//
 //	Version NVRF	20/4/2018, tongda
 // 		Add
 //	Version 2.1.	12/3/2017, tongda
@@ -84,7 +84,7 @@ VirtualDevice::DevicePort::getAddrRanges() const
 	return rangeList;
 }
 
-VirtualDevice::VirtualDevice(const Params *p) : 
+VirtualDevice::VirtualDevice(const Params *p) :
 	MemObject(p),
 	id(p->id),
 	need_recover(false),
@@ -110,7 +110,7 @@ VirtualDevice::VirtualDevice(const Params *p) :
 
 	// delay_remained is zeros at the beginning
 	delay_remained = 0;
-	
+
 	// the energy consumption of each cycle defines the cost of three modes (OFF, SLEEP, NORMAL, ACTIVE)
 	energy_consumed_per_cycle_vdev[0] = p->energy_consumed_per_cycle_vdev[0];
 	energy_consumed_per_cycle_vdev[1] = p->energy_consumed_per_cycle_vdev[1];
@@ -178,7 +178,7 @@ VirtualDevice::triggerInterrupt()
 
 	// Actuation operation return
 	} else {
-		DPRINTF(VirtualDevice, "%s: Completed the task.\n", dev_name);	
+		DPRINTF(VirtualDevice, "%s: Completed the task.\n", dev_name);
 
 		// if delay_remained > 0, means that, the completed task is a recovered actuation.
 		delay_remained = 0;
@@ -199,7 +199,7 @@ VirtualDevice::access(PacketPtr pkt)
 
 	if (pkt->isRead()) {
 		memcpy(pkt->getPtr<uint8_t>(), pmem+offset, pkt->getSize());
-	} 
+	}
 	else if (pkt->isWrite()) {
 		/* the request will write the target address to 1 */
 		const uint8_t* pkt_addr = pkt->getConstPtr<uint8_t>();
@@ -212,8 +212,8 @@ VirtualDevice::access(PacketPtr pkt)
 					DPRINTF(VirtualDevice, "State BUSY! Request discarded!\n");
 				} else {
 					// Vdev enters/keeps ACTIVE to complete the initialization
-					vdev_energy_state = VdevEngyState::STATE_NORMAL; 
-					
+					vdev_energy_state = VdevEngyState::STATE_NORMAL;
+
 					/* Set the virtual device to working mode */
 					*pmem |= VDEV_BUSY;
 					*pmem &= ~VDEV_IDLE;
@@ -221,8 +221,8 @@ VirtualDevice::access(PacketPtr pkt)
 					/* Schedule interrupt after init-delay. */
 					schedule(event_init, curTick() + delay_set);
 					/* Initialization Information. */
-					DPRINTF(VirtualDevice, "%s: Initialization. Need Ticks: %i, Energy: %lf.\n", 
-						dev_name, delay_set, 
+					DPRINTF(VirtualDevice, "%s: Initialization. Need Ticks: %i, Energy: %lf.\n",
+						dev_name, delay_set,
 						energy_consumed_per_cycle_vdev[VdevEngyState::STATE_NORMAL] * ticksToCycles(delay_set)
 					);
 				}
@@ -240,7 +240,7 @@ VirtualDevice::access(PacketPtr pkt)
 				} else {
 					/* Request succeeds. */
 					vdev_energy_state = VdevEngyState::STATE_ACTIVE; // The virtual device enter/keep in the active status.
-					
+
 					/* 统计设备访问次数 */
 					if (need_log)
 					{
@@ -250,15 +250,15 @@ VirtualDevice::access(PacketPtr pkt)
 						fout << access_time << std::endl;
 						fout.close();
 					}
-					
+
 					/* Set the virtual device to working mode */
 					*pmem |= VDEV_BUSY;
 					*pmem &= ~VDEV_IDLE;
 					/* Schedule interrupt. */
 					schedule(event_interrupt, curTick() + delay_self);
 					/* Energy consumption. */
-					DPRINTF(VirtualDevice, "%s: Start working. Need Ticks:%i, Energy: %lf.\n", 
-						dev_name, delay_self, 
+					DPRINTF(VirtualDevice, "%s: Start working. Need Ticks:%i, Energy: %lf.\n",
+						dev_name, delay_self,
 						energy_consumed_per_cycle_vdev[VdevEngyState::STATE_ACTIVE] * ticksToCycles(delay_self)
 					);
 					cpu->virtualDeviceStart(id);
@@ -275,7 +275,7 @@ VirtualDevice::access(PacketPtr pkt)
 }
 
 // Todo: Find out which function calls tick() of vdev?
-void 
+void
 VirtualDevice::tick()
 {
 	// Task Latency
@@ -300,11 +300,11 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 	/* 	power on: energy state recovery.			*/
 
 	// Power-off: the device fails
-	if (msg.type == SimpleEnergySM::MsgType::POWER_OFF) 
+	if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
 	{
 		// Set energy state
 		vdev_energy_state = VdevEngyState::STATE_POWER_OFF;
-		
+
 		// The vdev needs re-init, but no restart task
 		// a. ready but not busy: no task on working
 		if ( (*pmem & VDEV_READY) && !(*pmem & VDEV_BUSY) )
@@ -314,14 +314,14 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 			need_recover = true;
 			// Not task needs to be restart
 			delay_remained = 0;
-		} 
+		}
 
 		// The vdev needs re-init, but no restart task
 		// b. not ready but busy: init task on working
 		else if	( !(*pmem & VDEV_READY) && (*pmem & VDEV_BUSY) )
 		{
 			DPRINTF(VirtualDevice, "%s: Power-off, not ready but busy (init-ing).\n", dev_name);
-			
+
 			// remove the incomplete initialization task
 			assert(event_init.scheduled());
 			deschedule(event_init);
@@ -334,9 +334,9 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 
 		// The vdev needs to be re-init and restart the incomplete tasks (not init task)
 		else if ( (*pmem & VDEV_READY) && (*pmem & VDEV_BUSY) )
-		{	
+		{
 			DPRINTF(VirtualDevice, "%s: Power-off, ready and busy (working).\n", dev_name);
-			
+
 			// remove task
 			assert(event_interrupt.scheduled());
 			deschedule(event_interrupt);
@@ -362,7 +362,7 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 
 		// EXTENTION: User defined behaviors
 	}
-	
+
 	// Power-on: the device is power-on but not ready
 	else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
 	{
@@ -377,7 +377,7 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 			*pmem |= VDEV_BUSY;
 			// Initialization
 			DPRINTF(VirtualDevice, "%s: Recover-Initialization, Need Ticks: %i, Energy: %lf.\n",
-				dev_name, delay_set, 
+				dev_name, delay_set,
 				energy_consumed_per_cycle_vdev[VdevEngyState::STATE_NORMAL] * ticksToCycles(delay_set)
 			);
 			// Alarm the cpu to wait
@@ -398,7 +398,7 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 	// EXTENTION: add behaviors for your energy state machine.
 	//else if (msg.type == YourMsgType){}
 
-	else 
+	else
 	{
 		DPRINTF(EnergyMgmt, "Unrecognized MsgType!\n");
 		return 0;

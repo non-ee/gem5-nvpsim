@@ -133,7 +133,7 @@ AtomicSimpleCPU::AtomicSimpleCPU(AtomicSimpleCPUParams *p)
 	_status = Idle;
 	tick_recover = 0;
 	in_interrupt = false;
-	
+
 	// the energy consumption of each cycle defines the cost of three modes (OFF, SLEEP, ACTIVE)
 	power_cpu[0] = p->power_cpu[0];
 	power_cpu[1] = p->power_cpu[1];
@@ -690,7 +690,7 @@ AtomicSimpleCPU::virtualDeviceRecover(char* vdev_name, Tick delay_vdev_init)
 	DPRINTF(VirtualDevice, "Wait for Peripheral.\n");
 
 	// The recover_time is the maximum of the recovery of vdev-s.
-	time = tickEvent.when() - recover_time; 
+	time = tickEvent.when() - recover_time;
 	time += recover_time >= delay_vdev_init ? recover_time : delay_vdev_init;
 	reschedule(tickEvent, time);
 }
@@ -706,7 +706,7 @@ AtomicSimpleCPU::initVdevByCPU(int vdev_id)
 /****** Energy Message Handler *******/
 // Todo: add a new idle tick_event for CPU to represent the idle state.
 int
-AtomicSimpleCPU::handleMsg(const EnergyMsg &msg) 
+AtomicSimpleCPU::handleMsg(const EnergyMsg &msg)
 {
 	Tick tick_remain = 0;
 	tick_recover = 0;
@@ -737,7 +737,7 @@ AtomicSimpleCPU::handleMsg(const EnergyMsg &msg)
 		schedule(tickEvent, curTick() + tick_recover);
 		break;
 
-	default: 
+	default:
 		return 0;
 	}
 

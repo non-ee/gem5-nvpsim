@@ -1,6 +1,6 @@
 //
 // 	Head file for Virtual Device
-// 
+//
 //	Version 2.1.	12/3/2017, tongda
 //		Add new states considering initializations
 //	Perivious versions: ruoyang
@@ -79,11 +79,11 @@ public:
 	virtual ~VirtualDevice();
 	virtual void init();
 
-	/* Flags defined be the first byte in the memory. 
+	/* Flags defined be the first byte in the memory.
 	 * |--high-----------------|---------------------low--|
 	 * |------R & W---------|-------Read only---------|
 	 * |Init|Activate|---------|Chaos|Ready|Busy|Idle|
-	 
+
 	 R/W command: (configurable)
 	 Init: 		Initialize the virtual device
 	 Activate: 	activate a peripheral operation
@@ -95,12 +95,12 @@ public:
 	 idle 	: device is ready to carry on a new operation
 
 	*/
-	static const uint8_t VDEV_INIT		= 0x80;
-	static const uint8_t VDEV_ACTIVATE	= 0x40;
-	static const uint8_t VDEV_CHAOS		= 0x08;
-	static const uint8_t VDEV_READY		= 0x04;
-	static const uint8_t VDEV_BUSY		= 0x02;
-	static const uint8_t VDEV_IDLE		= 0x01;
+	static const uint8_t VDEV_INIT		= 0x80;         // 0b10000000;
+	static const uint8_t VDEV_ACTIVATE	= 0x40;         // 0b01000000;
+	static const uint8_t VDEV_CHAOS		= 0x08;         // 0b00001000;
+	static const uint8_t VDEV_READY		= 0x04;         // 0b00000100;
+	static const uint8_t VDEV_BUSY		= 0x02;         // 0b00000010;
+	static const uint8_t VDEV_IDLE		= 0x01;         // 0b00000001;
 
 	/** Method to trigger an interrupt after task finishes. */
 	void triggerInterrupt();
@@ -120,7 +120,7 @@ public:
 	void recvRespRetry();
 
 	/** Vdev Energy State related parameters **/
-	/* Three states are defined as energy modes, that are: 
+	/* Three states are defined as energy modes, that are:
 	 	power-off 	: totally fail, execution state = raw;
 	 	sleep  		: low power mode, only keep the status, cannot execute operations
 	 	active 	 	: full power mode, can carry on all the operations
