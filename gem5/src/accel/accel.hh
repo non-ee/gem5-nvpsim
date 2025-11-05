@@ -3,64 +3,89 @@
  * created by non-ee, 10/24/2025
  */
 
+ #ifndef GEM5_ACCELERATOR_HH
+ #define GEM5_ACCELERATOR_HH
 
-#include <cstdint>
-#include <stdint.h>
+ #include "mem/mem_object.hh"
+ #include "sim/eventq.hh"
+ #include "cpu/base.hh"
+ #include "params/Accelerator.hh"
+ #include "energy/energy_msg.hh"
 
-class Accelerator : public MemObject
-{
-    /* Identity of the accelerator */
-    protected:
-        uint32_t id;
-        char dev_names[100];
+ class Accelerator : public MemObject
+ {
+   public:
+     typedef AcceleratorParams Params;
+     const Params *params() const {
+         return reinterpret_cast<const Params *>(_params);
+     }
 
-    private:
-        /* Whether the state needs reset */
-        bool need_reset;
-        /* Definition of TickEvent for Accelerator */
-        struct TickEvent : public Event {
-            Accelerator *accel;
+     Accelerator(const Params *p);
+     virtual ~Accelerator();
 
-            TickEvent(Accelerator *accel);
-            void process();
-        }
+     void init() override;
 
-        TickEvent tickEvent;
-        /* Record the execution state and energy consumption */
-        void tick();
+     /** Port to connect with CPU (MMIO access) **/
+     class CtrlPort : public SlavePort
+     {
+       private:
+         Accelerator *accel;
 
-        /* Definition of device port for Accelerator */
-        class DevicePort : public SlavePort {
-            private:
-                Accelerator *accel;
+       public:
+         CtrlPort(const std::string &name, Accelerator *_accel);
 
-            public:
-                DevicePort(Accelerator *accel, const std::string &name);
-                void recvPacket(PacketPtr pkt);
-        }
+       protected:
+         Tick recvAtomic(PacketPtr pkt) override;
+         void recvFunctional(PacketPtr pkt) override;
+         bool recvTimingReq(PacketPtr pkt) override;
+         void recvRespRetry() override;
+         AddrRangeList getAddrRanges() const override;
+     };
 
+     CtrlPort ctrlPort;
 
-    public:
-        typedef AcceleratorParams Params;
-        const Params *params() const {
-            return reinterpret_cast<const Param*>(_params);
-        }
-        Accelerator(const Params *p);
-        virtual ~Accelerator();
-        virtual void init();
+     /** Event to handle computation done **/
+     EventFunctionWrapper doneEvent;
 
-        /* Energy state for accelerator */
-        enum AccelEngyState {
-            STATE_POWER_OFF = 0,
-            STATE_SLEEP = 1,
-            STATE_ACTIVE = 2,
-        };
+     /** CPU interrupt trigger **/
+     void triggerInterrupt();
 
-        /* Control registers */
-        static const uint8_t ACCEL_INIT = 0x80;
-        static const uint8_t ACCEL_ACTIVATE = 0x80;
-        static const uint8_t ACCEL_INIT = 0x80;
+     /** Communication with energy manager **/
+     virtual int handleMsg(const EnergyMsg &msg);
 
-        uint8_t *controlRegister;
-        uint8_t *status;
-};
+     /** gem5 required overrides **/
+     BaseSlavePort &getSlavePort(const std::string &if_name, PortID idx = InvalidPortID) override;
+     AddrRange getAddrRange() const;
+
+   protected:
+     /** Internal state **/
+     BaseCPU *cpu;
+     AddrRange range;
+
+     /** Control registers (accessible by CPU) **/
+     uint32_t cmd_reg;
+     uint32_t src_addr;
+     uint32_t dst_addr;
+     uint32_t size;
+     uint32_t status_reg;
+
+     /** Accelerator state **/
+     bool busy;
+     Tick compute_latency;
+     double energy_per_cycle;
+
+     /** Energy management **/
+     enum AccelEngyState {
+         STATE_OFF = 0,
+         STATE_SLEEP,
+         STATE_IDLE,
+         STATE_ACTIVE
+     };
+     AccelEngyState energy_state;
+
+     /** Internal operation handlers **/
+     void startCompute();
+     void finishCompute();
+ };
+
+ #endif // GEM5_ACCELERATOR_HH

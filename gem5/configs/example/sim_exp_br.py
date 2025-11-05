@@ -221,7 +221,8 @@ system.vdev7.need_log = 1
 
 process = LiveProcess()
 # Benchmark path
-process.cmd = ['tests/test-progs/brgMonitor/main_trans_cluster2']
+# process.cmd = ['tests/test-progs/brgMonitor/main_trans_cluster2']
+process.cmd = ['tests/test-progs/accel-test/accel_test']
 system.cpu.workload = process
 system.cpu.createThreads()
 
