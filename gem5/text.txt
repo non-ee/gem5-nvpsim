@@ -1,0 +1,28 @@
+scons: Reading SConscript files ...
+Warning: Protocol buffer compiler (protoc) not found.
+         Please install protobuf-compiler for tracing support.
+Checking for leading underscore in global variables...(cached) no
+Checking for C header file Python.h... (cached) yes
+Checking for C library python2.7... (cached) yes
+Checking for C library pthread... (cached) yes
+Checking for C library dl... (cached) yes
+Checking for C library util... (cached) yes
+Checking for C library m... (cached) yes
+Checking for accept(0,0,0) in C++ library None... (cached) yes
+Checking for zlibVersion() in C++ library z... (cached) yes
+Checking for clock_nanosleep(0,0,NULL,NULL) in C library None... (cached) yes
+Checking for timer_create(CLOCK_MONOTONIC, NULL, NULL) in C library None... (cached) no
+Checking for timer_create(CLOCK_MONOTONIC, NULL, NULL) in C library rt... (cached) yes
+Checking for C library tcmalloc... (cached) yes
+Checking for C header file fenv.h... (cached) yes
+Checking for C header file linux/kvm.h... (cached) yes
+Checking size of struct kvm_xsave ... (cached) yes
+Checking for member exclude_host in struct perf_event_attr...(cached) yes
+Building in /gem5/gem5/build/ARM
+Using saved variables file /gem5/gem5/build/variables/ARM
+scons: done reading SConscript files.
+scons: Building targets ...
+ [NEW DEPS] ARM/arch/arm/generated/inc.d -> arm-deps
+ [ENVIRONS] arm-deps -> arm-environs
+ [     CXX] ARM/accel/accel.cc -> .do
+scons: building terminated because of errors.

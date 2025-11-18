@@ -1,6 +1,5 @@
 //
 //
-//
 #ifndef __PERIPHERAL_H__
 #define __PERIPHERAL_H__
 
@@ -30,29 +29,20 @@ static int VDEV_REG_NUM[8] = {
 	7	// General VdeV
 };
 
-static void * PERI_ADDR[8] = {
+static void * PERI_ADDR[3] = {
 	(void *) 0x3e800000,
 	(void *) 0x3e900000,
-	(void *) 0x3ea00000,
-	(void *) 0x3eb00000,
-	(void *) 0x3ec00000,
-	(void *) 0x3ed00000,
-	(void *) 0x3ee00000,
-	(void *) 0x3ef00000
+	(void *) 0x3ea00000
 };
 
-void	periRegister(int peri_id, uint8_t *reg_file);
+void	periRegister(int peri_id, uint8_t **reg_file);
 void	periLogout(int peri_id);
 void	periInit(uint8_t *cmd_reg);
 
-void	tmpSense(int *tmp, uint8_t *cmd_reg);
+void	tmpSense(uint8_t *tmp, uint8_t *cmd_reg);
 void	accSense(int *x, int *y, int *z, uint8_t *cmd_reg);
-
 
 void	rfTrans(uint8_t *cmd_reg, uint8_t *payload);
 void	generalVdevActive(uint8_t *cmd_reg);
-
-
-
 
 #endif

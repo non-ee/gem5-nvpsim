@@ -1,91 +1,221 @@
-/*
- * Head file for gem5 accelerator
- * created by non-ee, 10/24/2025
- */
+#ifndef GEM5_ACCEL_HH
+#define GEM5_ACCEL_HH
 
- #ifndef GEM5_ACCELERATOR_HH
- #define GEM5_ACCELERATOR_HH
+#include "mem/mem_object.hh"
+#include "mem/packet.hh"
+#include "mem/packet_access.hh"
+#include "sim/eventq.hh"
+#include "params/Accelerator.hh"
+#include "cpu/base.hh"
+#include <cstdint>
+#include <string>
+#include <sys/types.h>
 
- #include "mem/mem_object.hh"
- #include "sim/eventq.hh"
- #include "cpu/base.hh"
- #include "params/Accelerator.hh"
- #include "energy/energy_msg.hh"
+class Accelerator;
 
- class Accelerator : public MemObject
- {
-   public:
-     typedef AcceleratorParams Params;
-     const Params *params() const {
-         return reinterpret_cast<const Params *>(_params);
-     }
+class ComputeUnit
+{
+  private:
+    Accelerator* owner;
+    bool busy;
+    Tick computeLatency;
 
-     Accelerator(const Params *p);
-     virtual ~Accelerator();
+    Tick computeStartTick;
+    Tick remainingLatency;
+    bool paused;
 
-     void init() override;
 
-     /** Port to connect with CPU (MMIO access) **/
-     class CtrlPort : public SlavePort
-     {
-       private:
-         Accelerator *accel;
+    class ComputeDoneEvent : public Event
+    {
+      private:
+        ComputeUnit* parent;
+      public:
+        ComputeDoneEvent(ComputeUnit* p)
+            : Event(Default_Pri, AutoDelete), parent(p) {}
+        void process() override { parent->finish(); }
+        const char* description() const override {
+            return "ComputeUnit::ComputeDoneEvent";
+        }
+    };
 
-       public:
-         CtrlPort(const std::string &name, Accelerator *_accel);
+    ComputeDoneEvent computeDoneEvent;
 
-       protected:
-         Tick recvAtomic(PacketPtr pkt) override;
-         void recvFunctional(PacketPtr pkt) override;
-         bool recvTimingReq(PacketPtr pkt) override;
-         void recvRespRetry() override;
-         AddrRangeList getAddrRanges() const override;
-     };
+  public:
+    ComputeUnit(Accelerator* _owner, Tick latency);
 
-     CtrlPort ctrlPort;
+    void start();
+    void pause();
+    void resume();
+    void finish();
+    bool isBusy() const { return busy; }
+};
 
-     /** Event to handle computation done **/
-     EventFunctionWrapper doneEvent;
+/** Memory port: Accelerator -> Memory (DMA) **/
+class MemPort : public MasterPort {
+    private:
+    Accelerator *owner;
 
-     /** CPU interrupt trigger **/
-     void triggerInterrupt();
+    // DMA State
+    Addr dmaAddr;
+    uint8_t *dmaBuffer;
+    uint32_t dmaCount;
+    uint32_t dmaIndex;
 
-     /** Communication with energy manager **/
-     virtual int handleMsg(const EnergyMsg &msg);
+    bool paused;
+    bool dmaReadMode;
+    bool dmaWriteMode;
 
-     /** gem5 required overrides **/
-     BaseSlavePort &getSlavePort(const std::string &if_name, PortID idx = InvalidPortID) override;
-     AddrRange getAddrRange() const;
+    public:
+    MemPort(const std::string &name, Accelerator *accel);
 
-   protected:
-     /** Internal state **/
-     BaseCPU *cpu;
-     AddrRange range;
+    /* Basic atomic access */
+    uint8_t readAtomic(Addr addr);
+    void writeAtomic(Addr addr, uint8_t val);
 
-     /** Control registers (accessible by CPU) **/
-     uint32_t cmd_reg;
-     uint32_t src_addr;
-     uint32_t dst_addr;
-     uint32_t size;
-     uint32_t status_reg;
+    /* DMA entry point */
+    void startDmaRead(Addr addr, uint8_t *buf, uint32_t count);
+    void startDmaWrite(Addr addr, uint8_t *buf, uint32_t count);
 
-     /** Accelerator state **/
-     bool busy;
-     Tick compute_latency;
-     double energy_per_cycle;
+    void pauseDma();
+    void resumeDma();
+    void dmaStep();
 
-     /** Energy management **/
-     enum AccelEngyState {
-         STATE_OFF = 0,
-         STATE_SLEEP,
-         STATE_IDLE,
-         STATE_ACTIVE
-     };
-     AccelEngyState energy_state;
+    // Must implement these!
+    bool recvTimingResp(PacketPtr pkt) override {
+        panic("Accelerator MemPort does not support timing responses!\n");
+        return false;
+    }
 
-     /** Internal operation handlers **/
-     void startCompute();
-     void finishCompute();
- };
+    void recvReqRetry() override {
+        panic("Accelerator MemPort does not use reqRetry!\n");
+    }
 
- #endif // GEM5_ACCELERATOR_HH
+    private:
+    // DMA Event
+    EventWrapper<MemPort, &MemPort::dmaStep> dmaEvent;
+};
+
+/** Control port: CPU -> Accelerator (MMIO) **/
+class CtrlPort : public SlavePort {
+    private:
+    Accelerator *owner;
+    public:
+    CtrlPort(const std::string &name, Accelerator *accel);
+    protected:
+    Tick recvAtomic(PacketPtr pkt) override;
+    void recvFunctional(PacketPtr pkt) override;
+    bool recvTimingReq(PacketPtr pkt) override;
+    void recvRespRetry() override;
+    AddrRangeList getAddrRanges() const override;
+};
+
+class Accelerator : public MemObject
+{
+    friend class ComputeUnit;
+    friend class CtrlPort;
+    friend class MemPort;
+
+private:
+    /* TickEvent for handling periodic energy consumption */
+    struct TickEvent : public Event {
+        Accelerator *owner;
+        TickEvent(Accelerator *owner_this);
+        void process();
+        const char *description() const override;
+    };
+
+    CtrlPort ctrlPort;
+    MemPort memPort;
+    ComputeUnit computeUnit;
+
+    TickEvent tickEvent;
+
+    void tick();
+
+public:
+    typedef AcceleratorParams Params;
+    const Params *params() const {
+        return reinterpret_cast<const Params *>(_params);
+    }
+
+    Accelerator(const Params *p);
+    virtual ~Accelerator();
+
+    virtual void init() override;
+
+
+    /** Gem5 port accessors */
+    BaseSlavePort &getSlavePort(const std::string &if_name, PortID idx = InvalidPortID) override;
+    BaseMasterPort &getMasterPort(const std::string &if_name, PortID idx = InvalidPortID) override;
+
+    /** Methods to handle packets **/
+    Tick recvAtomic(PacketPtr pkt);
+    void recvFunctional(PacketPtr pkt);
+    bool recvTimingReq(PacketPtr pkt);
+    void recvRespRetry();
+    AddrRange getAddrRanges() const;
+
+    /** Called by EnergyMgr (optional). Return 1 on handled. */
+    int handleMsg(const EnergyMsg &msg);
+
+    void triggerInterrupt();
+
+    /** Operation routines */
+    void initEvent();
+    void doDmaRead();
+    void doDmaWrite();
+    void doCompute();
+    void writeOutputBuffer(uint8_t val);
+
+    /** Energy state (simple enum) */
+    enum AccelEnergyState {
+        STATE_OFF = 0,
+        STATE_IDLE = 2,
+        STATE_ON = 4
+    };
+
+protected:
+    /** CPU / system references */
+    BaseCPU *cpu;
+    AddrRange controlRange;
+
+    /** I/O Buffers **/
+    uint8_t *input_buffer;
+    uint8_t *output_buffer;
+
+    /** Control registers (MMIO) */
+    uint32_t cmd_reg;   // register to interact with cpu
+    uint32_t stt_reg;   // register to interact with cpu
+    Addr src_addr;      // source buffer in system memory
+    Addr dst_addr;      // destination buffer in system memory
+    uint32_t count; // number of elements / bytes
+
+    /* cmd_reg bit */
+    static const uint32_t CMD_START = (1 << 0);
+    static const uint32_t CMD_ABORT = (1 << 1);
+
+    /* stt_reg bit */
+    static const uint32_t STATUS_DONE = (1 << 0);
+    static const uint32_t STATUS_DMA_READ = (1 << 1);
+    static const uint32_t STATUS_DMA_WRITE = (1 << 2);
+    static const uint32_t STATUS_COMPUTE = (1 << 3);
+
+    /** Status */
+    bool busy;
+    Tick delay_init;
+    Tick delay_compute;
+    Tick delay_cpu_interrupt;
+
+    double energy_compute_per_tick;
+    double energy_idle_per_tick;
+
+    double E_init;
+    double E_compute;
+
+    AccelEnergyState energy_state;
+
+    /** Event scheduled when computation finishes */
+    EventWrapper<Accelerator, &Accelerator::initEvent> event_init;
+};
+
+#endif // GEM5_ACCEL_HH

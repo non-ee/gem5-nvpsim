@@ -19,4 +19,3 @@ do
 	 	#build/ARM/gem5.debug --debug-flag=VirtualDevice --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2
 	done
 done
-

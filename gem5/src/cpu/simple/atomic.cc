@@ -60,6 +60,7 @@
 #include "debug/SimpleCPU.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/VirtualDevice.hh"
+#include "debug/Accelerator.hh"
 #include "mem/packet.hh"
 #include "mem/packet_access.hh"
 #include "mem/physical.hh"
@@ -701,6 +702,20 @@ AtomicSimpleCPU::initVdevByCPU(int vdev_id)
 {
 	// Todo: to complete
 	return 1;
+}
+
+// Interface for Accelerator
+void
+AtomicSimpleCPU::accelInterrupt(Tick delay_isa)
+{
+	//in_interrupt = 1;
+	DPRINTF(Accelerator, "Accelerator calls INT, latency = %#lu\n", delay_isa);
+
+	Tick time = tickEvent.when();
+	if (delay_isa % clockPeriod())
+		delay_isa += clockPeriod() - delay_isa % clockPeriod();
+	time += delay_isa;
+	reschedule(tickEvent, time);
 }
 
 /****** Energy Message Handler *******/

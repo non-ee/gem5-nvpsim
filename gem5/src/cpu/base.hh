@@ -581,6 +581,9 @@ class BaseCPU : public MemObject
     virtual int virtualDeviceStart(uint32_t id);
     virtual int virtualDeviceEnd(uint32_t id);
 
+    // Accelerator support
+    virtual void accelInterrupt(Tick delay_accel_interrupt);
+
 };
 
 #endif // THE_ISA == NULL_ISA

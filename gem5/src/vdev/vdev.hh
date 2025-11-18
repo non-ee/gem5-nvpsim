@@ -180,4 +180,5 @@ protected:
 
 };
 
+
 #endif //GEM5_VDEV_HH

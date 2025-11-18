@@ -95,7 +95,7 @@ inline void curEventQueue(EventQueue *q) { _curEventQueue = q; }
  */
 class EventBase
 {
-  protected:   
+  protected:
     typedef unsigned short FlagsType;
     typedef ::Flags<FlagsType> Flags;
 
@@ -161,8 +161,15 @@ class EventBase
     /// Virtual Devices ticks must come with CPU ticks before interrupts
     static const Priority VirtualDevice_Tick_Pri =         52;
 
+    // Accelerator ticks must come after CPU ticks
+    static const Priority Accelerator_Tick_Pri =         53;
+    static const Priority Accelerator_DMA_Pri =         53;
+    static const Priority Accelerator_Compute_Done_Pri =   54;
+
     /// Virtual Interrupt happens before energy event and after cpu tick
     static const Priority Virtual_Interrupt =           55;
+
+    static const Priority Accelerator_Interrupt =           56;
 
     /// Energy event must happens at the end of each cycle
     /// because it need to make changes to events others have triggered

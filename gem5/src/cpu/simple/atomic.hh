@@ -59,7 +59,7 @@ public:
 	AtomicSimpleCPU(AtomicSimpleCPUParams *params);
 	virtual ~AtomicSimpleCPU();
 	virtual void init();
-	
+
 	double power_cpu[3] = {0, 0.3, 1.3};   // nJ/cycle
 	double clkmult = 1;
 
@@ -94,6 +94,8 @@ public:
 	virtual void virtualDeviceRecover(char* vdev_name, Tick delay_vdev_init);
 	virtual int initVdevByCPU(int vdev_id);
 
+	virtual void accelInterrupt(Tick delay_isa);
+
 	/*** Memory related function definitions ***/
 	unsigned int drain(DrainManager *drain_manager);
 	void drainResume();
@@ -107,7 +109,7 @@ public:
 	virtual void regProbePoints();
 	/* Print state of address in memory system via PrintReq (for debugging). */
 	void printAddr(Addr a);
-	
+
 	/*** Time related tools ***/
 	inline Tick clockPeriod() const
 	{

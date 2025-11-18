@@ -1,0 +1,7 @@
+Import('*')
+
+Source('accel.cc')
+
+SimObject('Accelerator.py')
+
+DebugFlag('Accelerator')

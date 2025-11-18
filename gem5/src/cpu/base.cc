@@ -775,7 +775,7 @@ void
 BaseCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_cpu_interrupt)
 {}
 
-void 
+void
 BaseCPU::virtualDeviceRecover(char* vdev_name, Tick delay_vdev_init)
 {}
 
@@ -792,3 +792,7 @@ BaseCPU::virtualDeviceEnd(uint32_t id)
     status_vdev[id] = 0;
     return 1;
 }
+
+void
+BaseCPU::accelInterrupt(Tick delay_accel_interrupt)
+{}
