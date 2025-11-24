@@ -9,10 +9,12 @@ rm m5out/batch_res.csv
 
 make -C tests/accelprog
 
-cap=16
+cap=12
 energy=8
+
+FLAG=--debug-flag=Accelerator
 
 echo "========================================================="
 echo "cap: $cap; energy: $energy"
-build/ARM/gem5.debug configs/accel/sim.py $cap $energy
-#build/ARM/gem5.debug --debug-flag=VirtualDevice --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2
+build/ARM/gem5.debug $FLAG configs/accel/sim.py $cap $energy
+# build/ARM/gem5.debug --debug-flag=VirtualDevice --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2

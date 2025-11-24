@@ -52,7 +52,7 @@ void EnergyMgmt::init()
 }
 
 // Handling the energy consumption as well as energy harvesting
-int 
+int
 EnergyMgmt::consumeEnergy(char *sender, double val)
 {
     /* Consume energy if val > 0, and harvest energy if val < 0 */
@@ -72,9 +72,8 @@ EnergyMgmt::consumeEnergy(char *sender, double val)
         }
         if (strcmp(sender, "AtomicCPU")==0) {
             DPRINTF(EnergyMgmt, "Energy %lf is consumed by %s. Energy remained: %lf\n", cons_unit, sender, energy_remained);
-            //DPRINTF(EnergyMgmt, "%lf\n", energy_remained);
         }
-    } 
+    }
 
     // Energy Harvesting, if val < 0
     else if (val < 0) {
@@ -86,7 +85,7 @@ EnergyMgmt::consumeEnergy(char *sender, double val)
             //DPRINTF(EnergyMgmt, "[EngyMgmt] Leakage energy is %lf. Energy remained: %lf\n", system_leakage, energy_remained);
         }
 
-        // energy harvesting        
+        // energy harvesting
         val *= energy_profile_mult; // adjust the supply
         harv_unit = -val;
         energy_remained = harvest_module->energy_harvest(-val, energy_remained);
@@ -103,7 +102,7 @@ EnergyMgmt::consumeEnergy(char *sender, double val)
         DPRINTF(EnergyMgmt, "[EngyMgmt] Energy %lf is harvested. Energy remained: %lf\n", harv_unit, energy_remained);
         //DPRINTF(EnergyMgmt, "%lf\n", energy_remained);
     }
-    
+
     // judge if energy_remained triggers state_machine changes
     state_machine->update(energy_remained);
 
@@ -111,7 +110,7 @@ EnergyMgmt::consumeEnergy(char *sender, double val)
 }
 
 // Broadcast energy messages via master energy port
-void 
+void
 EnergyMgmt::broadcastMsg()
 {
     /* Broadcast the first message in the msg queue. */
@@ -134,7 +133,7 @@ int EnergyMgmt::broadcastMsgAsEvent(const EnergyMsg &msg)
 }
 
 // The energy manager is not only the message sender but also a receiver. All the messages processed here. The energy manager handles the energy consuming/harvesting events, while for other messages, this function will make a statement of the messages.
-int 
+int
 EnergyMgmt::handleMsg(const EnergyMsg &msg)
 {
     // Statement of the current message (except consumes)
@@ -173,7 +172,7 @@ std::vector<double> EnergyMgmt::readEnergyProfile()
 }
 
 // Energy harvest function provides an harvest event, where an Energy_Consume_Msg with negative value is generated. One by one, this event will trigger the next harvest event.
-void 
+void
 EnergyMgmt::energyHarvest()
 {
     // read the energy supply data from the energy profile

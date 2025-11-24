@@ -573,6 +573,12 @@ class System : public MemObject
     bool isVAddrOfVdev(Addr addr);
     Addr allocVdevPages(Addr vaddr, int64_t& size);
 
+
+    // New: Accelerator virtual address mapping
+    Addr accelVAddr;
+    AddrRange accelRange;
+
+    bool isAccelVAddr(Addr adr);
 };
 
 void printSystems();

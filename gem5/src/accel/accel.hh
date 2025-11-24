@@ -184,33 +184,27 @@ protected:
     uint8_t *output_buffer;
 
     /** Control registers (MMIO) */
-    uint32_t cmd_reg;   // register to interact with cpu
-    uint32_t stt_reg;   // register to interact with cpu
+    uint8_t cmd_reg;   // register to interact with cpu
     Addr src_addr;      // source buffer in system memory
     Addr dst_addr;      // destination buffer in system memory
-    uint32_t count; // number of elements / bytes
+    bool busy;
 
     /* cmd_reg bit */
-    static const uint32_t CMD_START = (1 << 0);
-    static const uint32_t CMD_ABORT = (1 << 1);
-
-    /* stt_reg bit */
-    static const uint32_t STATUS_DONE = (1 << 0);
-    static const uint32_t STATUS_DMA_READ = (1 << 1);
-    static const uint32_t STATUS_DMA_WRITE = (1 << 2);
-    static const uint32_t STATUS_COMPUTE = (1 << 3);
+    static const uint8_t CMD_START = (1 << 0);
+    static const uint8_t CMD_ABORT = (1 << 1);
+    static const uint8_t CMD_DMA_READ = (1 << 2);
+    static const uint8_t CMD_DMA_WRITE = (1 << 3);
+    static const uint8_t CMD_COMPUTE = (1 << 4);
+    static const uint8_t CMD_DONE = (1 << 5);
 
     /** Status */
-    bool busy;
+    uint32_t count; // number of elements / bytes
     Tick delay_init;
     Tick delay_compute;
     Tick delay_cpu_interrupt;
 
     double energy_compute_per_tick;
     double energy_idle_per_tick;
-
-    double E_init;
-    double E_compute;
 
     AccelEnergyState energy_state;
 

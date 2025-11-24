@@ -36,11 +36,13 @@ from m5.proxy import *
 from DVFSHandler import *
 from SimpleMemory import *
 
-class MemoryMode(Enum): vals = ['invalid', 'atomic', 'timing',
-                                'atomic_noncaching']
+
+class MemoryMode(Enum):
+    vals = ["invalid", "atomic", "timing", "atomic_noncaching"]
+
 
 class System(MemObject):
-    type = 'System'
+    type = "System"
     cxx_header = "sim/system.hh"
     system_port = MasterPort("System port")
 
@@ -50,21 +52,21 @@ class System(MemObject):
 
     @classmethod
     def export_methods(cls, code):
-        code('''
+        code("""
       Enums::MemoryMode getMemoryMode() const;
       void setMemoryMode(Enums::MemoryMode mode);
-''')
+""")
 
-    memories = VectorParam.AbstractMemory(Self.all,
-                                          "All memories in the system")
-    mem_mode = Param.MemoryMode('atomic', "The mode the memory system is in")
+    memories = VectorParam.AbstractMemory(Self.all, "All memories in the system")
+    mem_mode = Param.MemoryMode("atomic", "The mode the memory system is in")
 
     # When reserving memory on the host, we have the option of
     # reserving swap space or not (by passing MAP_NORESERVE to
     # mmap). By enabling this flag, we accomodate cases where a large
     # (but sparse) memory is simulated.
-    mmap_using_noreserve = Param.Bool(False, "mmap the backing store " \
-                                          "without reserving swap")
+    mmap_using_noreserve = Param.Bool(
+        False, "mmap the backing store without reserving swap"
+    )
 
     # The memory ranges are to be populated when creating the system
     # such that these can be passed from the I/O subsystem through an
@@ -74,35 +76,48 @@ class System(MemObject):
     # Virtual Device Address Ranges
     has_vdev = Param.Bool(False, "Whether the system has virtual devices")
     vdev_ranges = VectorParam.AddrRange([], "Ranges that constitute virtual devices")
-    vaddr_vdev_ranges = VectorParam.AddrRange([],
-        "Virtual addresses that should be mapped to virtual devices")
+    vaddr_vdev_ranges = VectorParam.AddrRange(
+        [], "Virtual addresses that should be mapped to virtual devices"
+    )
+
+    # Accelerator Virtual Address Mapping
+    accel_range = Param.AddrRange(
+        AddrRange(0, 0), "Physical address range of accelerator MMIO"
+    )
+    accel_vaddr = Param.Addr(0, "Virtual address base for accelerator MMIO")
 
     cache_line_size = Param.Unsigned(64, "Cache line size in bytes")
 
     work_item_id = Param.Int(-1, "specific work item id")
     num_work_ids = Param.Int(16, "Number of distinct work item types")
-    work_begin_cpu_id_exit = Param.Int(-1,
-        "work started on specific id, now exit simulation")
-    work_begin_ckpt_count = Param.Counter(0,
-        "create checkpoint when work items begin count value is reached")
-    work_begin_exit_count = Param.Counter(0,
-        "exit simulation when work items begin count value is reached")
-    work_end_ckpt_count = Param.Counter(0,
-        "create checkpoint when work items end count value is reached")
-    work_end_exit_count = Param.Counter(0,
-        "exit simulation when work items end count value is reached")
-    work_cpus_ckpt_count = Param.Counter(0,
-        "create checkpoint when active cpu count value is reached")
+    work_begin_cpu_id_exit = Param.Int(
+        -1, "work started on specific id, now exit simulation"
+    )
+    work_begin_ckpt_count = Param.Counter(
+        0, "create checkpoint when work items begin count value is reached"
+    )
+    work_begin_exit_count = Param.Counter(
+        0, "exit simulation when work items begin count value is reached"
+    )
+    work_end_ckpt_count = Param.Counter(
+        0, "create checkpoint when work items end count value is reached"
+    )
+    work_end_exit_count = Param.Counter(
+        0, "exit simulation when work items end count value is reached"
+    )
+    work_cpus_ckpt_count = Param.Counter(
+        0, "create checkpoint when active cpu count value is reached"
+    )
 
     init_param = Param.UInt64(0, "numerical value to pass into simulator")
     boot_osflags = Param.String("a", "boot flags to pass to the kernel")
     kernel = Param.String("", "file that contains the kernel code")
-    kernel_addr_check = Param.Bool(True,
-        "whether to address check on kernel (disable for baremetal)")
+    kernel_addr_check = Param.Bool(
+        True, "whether to address check on kernel (disable for baremetal)"
+    )
     readfile = Param.String("", "file to read startup script from")
     symbolfile = Param.String("", "file to get the symbols from")
-    load_addr_mask = Param.UInt64(0xffffffffff,
-            "Address to mask loading binaries with")
+    load_addr_mask = Param.UInt64(0xFFFFFFFFFF, "Address to mask loading binaries with")
     load_offset = Param.UInt64(0, "Address to offset loading binaries with")
 
     # Dynamic voltage and frequency handler for the system, disabled by default

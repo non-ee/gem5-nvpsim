@@ -100,7 +100,9 @@ System::System(Params *p)
       instEventQueue("system instruction-based event queue"),
       vdev_ranges(p->vdev_ranges),
       has_vdev(p->has_vdev),
-      vaddr_vdev_ranges(p->vaddr_vdev_ranges)
+      vaddr_vdev_ranges(p->vaddr_vdev_ranges),
+      accelVAddr(p->accel_vaddr),
+      accelRange(p->accel_range)
 {
     // add self to global system list
     systemList.push_back(this);
@@ -190,7 +192,6 @@ System::init()
         DPRINTF(VirtualDevice, "VDev vaddr registered at %#lx - %#lx.\n",
                 iter->start(), iter->end());
     }
-
 }
 
 BaseMasterPort&
@@ -507,6 +508,11 @@ System::isVAddrOfVdev(Addr addr)
             return true;
         }
     }
+
+    // New: accel virtual address
+    if (isAccelVAddr(addr))
+        return true;
+
     return false;
 }
 
@@ -524,7 +530,23 @@ System::allocVdevPages(Addr vaddr, int64_t& size)
             return paddr;
         }
     }
+
+    // New: accel virtual address
+    if (isAccelVAddr(vaddr)) {
+        size = accelRange.size();
+        return accelRange.start();
+    }
+
     fatal("Cannot find virtual devices assigned with given virtual address!\n");
+}
+
+bool
+System::isAccelVAddr(Addr addr)
+{
+    if (accelVAddr == 0)
+        return false;
+
+    return (addr >= accelVAddr && addr < accelVAddr + accelRange.size());
 }
 
 System *

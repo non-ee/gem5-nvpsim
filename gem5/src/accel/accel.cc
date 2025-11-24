@@ -1,15 +1,12 @@
 #include "accel/accel.hh"
-#include "accel.hh"
 #include "debug/Accelerator.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/MemoryAccess.hh"
 #include "engy/state_machine.hh"
-#include "sim/system.hh"
 #include "params/Accelerator.hh"
-#include "mem/packet.hh"
-#include "mem/request.hh"
 #include "base/trace.hh"
 #include <cstdint>
+#include <ctime>
 
 /** -- ComputeUnit **/
 ComputeUnit::ComputeUnit(Accelerator *_owner, Tick latency)
@@ -33,7 +30,7 @@ void ComputeUnit::start()
     computeStartTick = curTick();
 
     owner->energy_state = owner->AccelEnergyState::STATE_ON;
-    owner->stt_reg |= Accelerator::STATUS_COMPUTE;
+    owner->cmd_reg |= Accelerator::CMD_COMPUTE;
 
     // Schedule completion event after computeLatency ticks
     Tick latency = remainingLatency ? remainingLatency : computeLatency;
@@ -57,7 +54,7 @@ void ComputeUnit::pause()
         owner->deschedule(&computeDoneEvent);
 
     busy = false;
-    owner->stt_reg &= ~Accelerator::STATUS_COMPUTE;
+    owner->cmd_reg &= ~Accelerator::CMD_COMPUTE;
     owner->energy_state = Accelerator::AccelEnergyState::STATE_OFF;
 }
 
@@ -72,7 +69,7 @@ void ComputeUnit::resume()
     busy = true;
     computeStartTick = curTick();
 
-    owner->stt_reg |= Accelerator::STATUS_COMPUTE;
+    owner->cmd_reg |= Accelerator::CMD_COMPUTE;
     owner->energy_state = Accelerator::AccelEnergyState::STATE_ON;
     owner->schedule(&computeDoneEvent, curTick() + remainingLatency);
 }
@@ -89,7 +86,7 @@ void ComputeUnit::finish()
         uint8_t result_value = 0x34; // example fixed result
         owner->writeOutputBuffer(result_value);
         owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
-        owner->stt_reg &= ~Accelerator::STATUS_COMPUTE;
+        owner->cmd_reg &= ~Accelerator::CMD_COMPUTE;
 
         owner->doDmaWrite();
     }
@@ -124,10 +121,10 @@ void Accelerator::tick()
         EngyConsume = 0;
         break;
     case AccelEnergyState::STATE_IDLE:
-        EngyConsume = energy_idle_per_tick;
+        EngyConsume = energy_idle_per_tick * ticksToCycles(latency);
         break;
     case AccelEnergyState::STATE_ON:
-        EngyConsume = energy_compute_per_tick;
+        EngyConsume = energy_compute_per_tick * ticksToCycles(latency);
         break;
     default:
         panic("Invalid energy state");
@@ -135,6 +132,7 @@ void Accelerator::tick()
 
     char dev_name[100] = "Accelerator";
     EnergyObject::consumeEnergy(dev_name, EngyConsume);
+    DPRINTF(EnergyMgmt, "Accelerator consumed %f energy\n", EngyConsume);
     schedule(tickEvent, curTick() + latency);
 }
 
@@ -235,7 +233,7 @@ void MemPort::startDmaRead(Addr src, uint8_t *buf, uint32_t count)
 
     // Update accelerator energy state
     owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
-    owner->stt_reg |= Accelerator::STATUS_DMA_READ;
+    owner->cmd_reg |= Accelerator::CMD_DMA_READ;
 
     // Schedule first DMA step immediately
     if (!dmaEvent.scheduled())
@@ -252,8 +250,9 @@ void MemPort::startDmaWrite(Addr dst, uint8_t *buf, uint32_t count)
 
     DPRINTF(Accelerator, "MemPort::startDmaWrite: dst=%#lx, count=%u\n", dst, count);
 
+    owner->cmd_reg |= Accelerator::CMD_DMA_WRITE;
     owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
-    owner->stt_reg |= Accelerator::STATUS_DMA_WRITE;
+
 
     if (!dmaEvent.scheduled())
         owner->schedule(dmaEvent, owner->clockEdge(Cycles(1)));
@@ -275,9 +274,10 @@ void MemPort::pauseDma()
 
     // Clear status flags temporarily
     if (dmaReadMode)
-        owner->stt_reg &= ~Accelerator::STATUS_DMA_READ;
+        owner->cmd_reg &= ~Accelerator::CMD_DMA_READ;
+
     else if (dmaWriteMode)
-        owner->stt_reg &= ~Accelerator::STATUS_DMA_WRITE;
+        owner->cmd_reg &= ~Accelerator::CMD_DMA_WRITE;
 
     // Set accelerator to OFF state
     owner->energy_state = Accelerator::AccelEnergyState::STATE_OFF;
@@ -295,9 +295,11 @@ void MemPort::resumeDma()
 
     // Restore correct flags
     if (dmaReadMode)
-        owner->stt_reg |= Accelerator::STATUS_DMA_READ;
+        owner->cmd_reg |= Accelerator::CMD_DMA_READ;
+
     else if (dmaWriteMode)
-        owner->stt_reg |= Accelerator::STATUS_DMA_WRITE;
+        owner->cmd_reg |= Accelerator::CMD_DMA_WRITE;
+
 
     owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
 
@@ -337,7 +339,7 @@ void MemPort::dmaStep()
         // DMA complete
         if (dmaReadMode)
         {
-            owner->stt_reg &= ~Accelerator::STATUS_DMA_READ;
+            owner->cmd_reg &= ~Accelerator::CMD_DMA_READ;
             dmaReadMode = false;
 
             DPRINTF(Accelerator, "MemPort::dmaStep: DMA READ complete (%u bytes)\n", dmaCount);
@@ -347,7 +349,7 @@ void MemPort::dmaStep()
         }
         else if (dmaWriteMode)
         {
-            owner->stt_reg &= ~Accelerator::STATUS_DMA_WRITE;
+            owner->cmd_reg &= ~Accelerator::CMD_DMA_WRITE;
             dmaWriteMode = false;
 
             DPRINTF(Accelerator, "MemPort::dmaStep: DMA WRITE complete (%u bytes)\n", dmaCount);
@@ -370,12 +372,13 @@ Accelerator::Accelerator(const Params *p) : MemObject(p),
 
                                             cpu(p->cpu),
                                             controlRange(p->controlRange),
+
                                             cmd_reg(0),
-                                            stt_reg(0),
                                             src_addr(0),
                                             dst_addr(0),
-                                            count(p->count),
                                             busy(false),
+
+                                            count(p->count),
                                             delay_init(p->delay_init),
                                             delay_compute(p->delay_compute),
                                             delay_cpu_interrupt(p->delay_cpu_interrupt),
@@ -412,10 +415,18 @@ void Accelerator::init()
     {
         ctrlPort.sendRangeChange();
     }
+
     DPRINTF(Accelerator, "%s initialized: controlRange: %#llx - %#llx\n",
             name(), controlRange.start(), controlRange.end());
+
+    printf("Accelerator's controlRange: %#lx - %#lx\n", controlRange.start(), controlRange.end());
+
     // set default energy state
-    energy_state = STATE_IDLE;
+    energy_state = STATE_OFF;
+    if (!tickEvent.scheduled())
+    {
+        schedule(tickEvent, clockEdge(Cycles(0)));
+    }
 }
 
 BaseSlavePort &
@@ -441,22 +452,23 @@ Accelerator::getMasterPort(const std::string &if_name, PortID idx)
 /** Receive atomic request **/
 Tick Accelerator::recvAtomic(PacketPtr pkt)
 {
-    DPRINTF(Accelerator, "Received atomic request at %s\n", name());
+    // DPRINTF(Accelerator, "Received atomic request at %s\n", name());
     Addr offset = pkt->getAddr() - controlRange.start();
 
     // assume 32-bit aligned register accesses
     if (pkt->isWrite())
     {
-        uint32_t val = *(pkt->getConstPtr<uint32_t>());
+        // printf("Accelerator: received atomic write from address %lx at offset %lx\n", pkt->getAddr(), offset);
         switch (offset)
         {
         case 0x00: // CMD
-            cmd_reg = val;
-            if (val & CMD_START)
+            cmd_reg = *(pkt->getConstPtr<uint8_t>());
+            if (cmd_reg & CMD_START)
             { // START bit
                 if (!busy)
                 {
                     busy = true;
+                    printf("Gem5: Started accelerator\n");
                     DPRINTF(Accelerator, "CMD_START received: scheduling initialization\n");
                     schedule(event_init, curTick() + delay_init);
                 }
@@ -467,20 +479,16 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
             }
             break;
 
-        case 0x04: // SRC_ADDR
-            src_addr = static_cast<Addr>(val);
+        case 0x08: // SRC_ADDR
+            src_addr = *(pkt->getConstPtr<Addr>());
             break;
 
-        case 0x08: // DST_ADDR
-            dst_addr = static_cast<Addr>(val);
-            break;
-
-        case 0x0C: // BYTES (total elements)
-            count = val;
+        case 0x10: // DST_ADDR
+            dst_addr = *(pkt->getConstPtr<Addr>());
             break;
 
         default:
-            DPRINTF(Accelerator, "%s: Unknown write offset %#x val %#x\n", name(), offset, val);
+            DPRINTF(Accelerator, "%s: Unknown write offset %#x val %#x\n", name(), offset);
             break;
         }
     }
@@ -531,24 +539,22 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
     {
-        if (stt_reg & Accelerator::STATUS_COMPUTE)
+        if (cmd_reg & CMD_COMPUTE)
         {
             computeUnit.pause();
         }
-        else if (stt_reg & Accelerator::STATUS_DMA_READ ||
-                 stt_reg & Accelerator::STATUS_DMA_WRITE)
+        else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
         {
             memPort.pauseDma();
         }
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
-        if (stt_reg & Accelerator::STATUS_COMPUTE)
+        if (cmd_reg & CMD_COMPUTE)
         {
             computeUnit.resume();
         }
-        else if (stt_reg & Accelerator::STATUS_DMA_READ ||
-                 stt_reg & Accelerator::STATUS_DMA_WRITE)
+        else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
         {
             memPort.resumeDma();
         }
@@ -604,7 +610,7 @@ void Accelerator::triggerInterrupt()
 {
     DPRINTF(Accelerator, "Accelerator: triggers an interrupt to CPU\n");
 
-    stt_reg |= Accelerator::STATUS_DONE;
+    cmd_reg |= CMD_DONE;
     energy_state = AccelEnergyState::STATE_OFF;
 
     cpu->accelInterrupt(delay_cpu_interrupt);

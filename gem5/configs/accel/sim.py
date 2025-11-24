@@ -107,51 +107,27 @@ system.vdev0.s_energy_port = system.energy_mgmt.m_energy_port
 # Generate log file of this device
 system.vdev0.need_log = 1
 
-system.vdev1 = VirtualDevice()
-system.vdev1.id = 1;
-system.vdev1.cpu = system.cpu
-system.vdev1.range = system.vdev_ranges[1]
-system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.26), Float(0.416), Float(0.416)]
-system.vdev1.delay_self = '1ms'
-system.vdev1.delay_cpu_interrupt = '100us'
-system.vdev1.delay_set = '1281us'
-system.vdev1.delay_recover = '492us'
-system.vdev1.is_interruptable = 0
-system.vdev1.port = system.membus.master
-system.vdev1.s_energy_port = system.energy_mgmt.m_energy_port
-system.vdev1.need_log = 1
-
-# system.vdev2 = VirtualDevice()
-# system.vdev2.id = 2;
-# system.vdev2.cpu = system.cpu
-# system.vdev2.range = system.vdev_ranges[2]
-# system.vdev2.energy_consumed_per_cycle_vdev = [Float(0), Float(0.24), Float(2.4), Float(11.9)]
-# system.vdev2.delay_self = '10us'
-# system.vdev2.delay_cpu_interrupt = '10us'
-# system.vdev2.delay_set = '66us'
-# system.vdev2.delay_recover = '145us'
-# system.vdev2.is_interruptable = 0
-# system.vdev2.port = system.membus.master
-# system.vdev2.s_energy_port = system.energy_mgmt.m_energy_port
-# system.vdev2.need_log = 1
 
 ###################################
 ###########  Accelerator  ############
 ###################################
+
 system.accel = Accelerator()
 system.accel.cpu = system.cpu
 system.accel.s_energy_port = system.energy_mgmt.m_energy_port
 system.accel.ctrlPort = system.membus.master
 system.accel.memPort = system.membus.slave
 
-system.accel.controlRange = system.vdev_ranges[2]
-system.vdev_ranges.append(system.accel.controlRange)
+system.accel_range = AddrRange('514MB', '516MB')
+system.accel_vaddr = Addr('0x40000000')
+system.accel.controlRange = system.accel_range
 
 system.accel.count = 10
 system.accel.delay_init = '100us'
-system.accel.delay_compute = '6ms'
+system.accel.delay_compute = '4ms'
+system.accel.delay_cpu_interrupt = '100us'
 system.accel.energy_idle_per_tick = Float(0.4)
-system.accel.energy_compute_per_tick = Float(4.0)
+system.accel.energy_compute_per_tick = Float(5.0)
 
 ###################################
 ###########  Benchmark  ############
@@ -170,8 +146,6 @@ m5.instantiate()
 print "Beginning simulation!"
 exit_event = m5.simulate(int(599900000))
 print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause())
-
-
 
 
 ###################################

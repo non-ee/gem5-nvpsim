@@ -286,6 +286,7 @@ VirtualDevice::tick()
 	// EnergyMgmt::consumeEnergy() to realize energy consumption.
 	EnergyObject::consumeEnergy(dev_name, EngyConsume);
 	// scheduler the next vdev::tickEvent to EventQueue
+	DPRINTF(EnergyMgmt, "Accelerator consumed %f energy\n", EngyConsume);
 	schedule(tickEvent, curTick() + latency);
 }
 
