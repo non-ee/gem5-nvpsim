@@ -61,7 +61,6 @@ void test_addr_reg() {
         0
     );
 
-
     uint8_t* cmd_reg = accel + 0x00;      // offset 0x0
     uint64_t* src_reg = (uint64_t*)(accel + 0x08); // offset 0x8
     uint64_t* dst_reg = (uint64_t*)(accel + 0x10); // offset 0x10

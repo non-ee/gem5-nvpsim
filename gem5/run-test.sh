@@ -9,7 +9,7 @@ rm m5out/batch_res.csv
 
 make -C tests/accelprog
 
-cap=12
+cap=6
 energy=8
 
 FLAG=--debug-flag=Accelerator

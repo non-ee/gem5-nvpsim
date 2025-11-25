@@ -44,9 +44,11 @@ class ComputeUnit
     ComputeUnit(Accelerator* _owner, Tick latency);
 
     void start();
+    void finish();
+    void abort();
+
     void pause();
     void resume();
-    void finish();
     bool isBusy() const { return busy; }
 };
 
@@ -159,6 +161,9 @@ public:
     int handleMsg(const EnergyMsg &msg);
 
     void triggerInterrupt();
+
+    void handleInterrupt();
+    void handleRecovery();
 
     /** Operation routines */
     void initEvent();

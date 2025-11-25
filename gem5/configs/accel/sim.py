@@ -94,7 +94,7 @@ system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6)
 # Delay of an active task
 system.vdev0.delay_self = '1ms'
 # Delay of the task returning interrupt
-system.vdev0.delay_cpu_interrupt = '100us'
+system.vdev0.delay_cpu_interrupt = '20us'
 # Initialization delay
 system.vdev0.delay_set = '2200us'
 # Recovering delay :: ToRemove
@@ -122,7 +122,7 @@ system.accel_range = AddrRange('514MB', '516MB')
 system.accel_vaddr = Addr('0x40000000')
 system.accel.controlRange = system.accel_range
 
-system.accel.count = 10
+system.accel.count = 100
 system.accel.delay_init = '100us'
 system.accel.delay_compute = '4ms'
 system.accel.delay_cpu_interrupt = '100us'
@@ -146,7 +146,6 @@ m5.instantiate()
 print "Beginning simulation!"
 exit_event = m5.simulate(int(599900000))
 print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause())
-
 
 ###################################
 ###########  Output File  ############
