@@ -28,3 +28,15 @@ void accel_map_registers() {
     src_reg = (uint64_t*)(accel + ACCEL_SRC_REG);
     dst_reg = (uint64_t*)(accel + ACCEL_DST_REG);
 }
+
+void accel_unmap_registers() {
+    if (accel != NULL) {
+        munmap(accel, 4096);
+        accel = NULL;
+    }
+
+    accel = NULL;
+    cmd_reg = NULL;
+    src_reg = NULL;
+    dst_reg = NULL;
+}

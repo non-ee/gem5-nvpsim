@@ -132,11 +132,10 @@ system.accel.energy_compute_per_tick = Float(5.0)
 ###################################
 ###########  Benchmark  ############
 ###################################
-
 process = LiveProcess()
 # Benchmark path
-# process.cmd = ['tests/test-progs/brgMonitor/main_trans_cluster2']
-process.cmd = ['tests/accelprog/accel_test']
+prog = sys.argv[3]
+process.cmd = ['tests/accelprog/%s' % prog]
 system.cpu.workload = process
 system.cpu.createThreads()
 

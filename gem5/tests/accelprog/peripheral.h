@@ -15,19 +15,8 @@
 
 #define VDEV_INIT		0x80
 #define VDEV_EXEC		0x40
-#define VDEV_READY	0x04
+#define VDEV_READY	    0x04
 #define VDEV_FINISH 	0x01
-
-static int VDEV_REG_NUM[8] = {
-	3,	// TMP_SENSOR
-	7,	// ACC_SENSOR
-	100,	// RF_TRANS
-	7,	// General VdeV
-	7,	// General VdeV
-	7,	// General VdeV
-	7,	// General VdeV
-	7	// General VdeV
-};
 
 static void * PERI_ADDR[3] = {
 	(void *) 0x3e800000,

@@ -24,10 +24,6 @@ void test_tmp_sensor() {
 }
 
 void test_cmd_reg () {
-    // Write into Accelerator registers
-    uint8_t* cmd_reg;
-
-    cmd_reg = (uint8_t *) mmap ( (void*)ACCEL_BASE_ADDR, sizeof(uint8_t), PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0 );
     *cmd_reg |= ACCEL_CMD_START;
 
     printf("Started accelerator\n");
@@ -60,7 +56,6 @@ void test_addr_reg() {
 int main() {
     accel_map_registers();
     test_tmp_sensor();
-    // test_cmd_reg();
     test_addr_reg();
 
     return 0;

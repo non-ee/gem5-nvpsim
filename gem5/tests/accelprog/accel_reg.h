@@ -24,5 +24,5 @@ extern uint64_t *dst_reg;
 
 
 void accel_map_registers();
-
+void accel_unmap_registers();
 #endif

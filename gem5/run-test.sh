@@ -7,14 +7,14 @@ rm m5out/batch_res.csv
 #build/ARM/gem5.debug configs/example/test_engy_vdev.py $cap $energy
 #build/ARM/gem5.debug --debug-flag=VirtualDevice,EnergyMgmt --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2
 
-make -C tests/accelprog
+cap=10
+energy=6
+prog=test_wo_accel
 
-cap=6
-energy=8
+make ${prog} -C tests/accelprog/
 
-FLAG=--debug-flag=Accelerator
+FLAG=--debug-flag=VirtualDevice
 
 echo "========================================================="
 echo "cap: $cap; energy: $energy"
-build/ARM/gem5.debug $FLAG configs/accel/sim.py $cap $energy
-# build/ARM/gem5.debug --debug-flag=VirtualDevice --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2
+build/ARM/gem5.debug $FLAG configs/accel/sim.py $cap $energy $prog # build/ARM/gem5.debug --debug-flag=VirtualDevice --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2
