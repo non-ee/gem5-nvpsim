@@ -23,15 +23,17 @@ system.clk_domain = SrcClockDomain()
 system.clk_domain.clock = '1MHz'				# clock period: 1us
 system.clk_domain.voltage_domain = VoltageDomain()
 system.mem_mode = 'atomic'
-system.mem_ranges = [AddrRange('512MB')]
-
+system.mem_ranges = [
+    AddrRange('512MB')
+]
 
 ###################################
 #####	Energy Management Profiles #####
 ###################################
 
 # Power Supply (file path and sample period)
-system.energy_mgmt = EnergyMgmt(path_energy_profile = 'profile/solar_new_60000.txt', energy_time_unit = '10us')
+energy_path = 'profile/solar_new_100000.txt'
+system.energy_mgmt = EnergyMgmt(path_energy_profile = energy_path, energy_time_unit = '10us')
 # Energy Management Strategy: State Machine
 system.energy_mgmt.state_machine = SimpleEnergySM()
 # Threshold Design for the state machine
@@ -111,6 +113,10 @@ system.vdev0.need_log = 1
 ###################################
 ###########  Accelerator  ############
 ###################################
+count = float(sys.argv[4])
+perf_boost = float(sys.argv[5])
+compute_tick_per_count = 1422050
+total_tick = count * compute_tick_per_count / perf_boost
 
 system.accel = Accelerator()
 system.accel.cpu = system.cpu
@@ -122,9 +128,9 @@ system.accel_range = AddrRange('514MB', '516MB')
 system.accel_vaddr = Addr('0x40000000')
 system.accel.controlRange = system.accel_range
 
-system.accel.count = 100
+system.accel.count = count
 system.accel.delay_init = '100us'
-system.accel.delay_compute = '4ms'
+system.accel.delay_compute = '%dt' % total_tick
 system.accel.delay_cpu_interrupt = '100us'
 system.accel.energy_idle_per_tick = Float(0.4)
 system.accel.energy_compute_per_tick = Float(5.0)
@@ -143,7 +149,7 @@ root = Root(full_system = False, system = system)
 m5.instantiate()
 
 print "Beginning simulation!"
-exit_event = m5.simulate(int(599900000))
+exit_event = m5.simulate(int(999900000))
 print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause())
 
 ###################################

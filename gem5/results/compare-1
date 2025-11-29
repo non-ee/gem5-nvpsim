@@ -1,0 +1,27 @@
+## Debug MemoryAccess
+
+158491000: system.mem_ctrl: Write from cpu.data of size 8 on address 0x82cd8 data 0x4914a0 C
+158492000: system.mem_ctrl: Write from cpu.data of size 8 on address 0x82cd0 data 0x491490 C
+158496000: system.mem_ctrl: Read from cpu.data of size 8 on address 0x82cd8 data 0x4914a0 C
+158501000: system.mem_ctrl: Read from cpu.data of size 8 on address 0x82cd0 data 0x491490 C
+158612000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a0 data 0x0 C
+158613000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a1 data 0x0 C
+158614000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a2 data 0x0 C
+158615000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a3 data 0x0 C
+158616000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a4 data 0x0 C
+158617000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a5 data 0x0 C
+158618000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a6 data 0x0 C
+158619000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a7 data 0x0 C
+158620000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a8 data 0x0 C
+158621000: system.mem_ctrl: Read from functional of size 1 on address 0x4914a9 data 0x0 C
+161468000: system.mem_ctrl: Write from functional of size 1 on address 0x491490 data 0x1f C
+161469000: system.mem_ctrl: Write from functional of size 1 on address 0x491491 data 0x1f C
+161470000: system.mem_ctrl: Write from functional of size 1 on address 0x491492 data 0x1f C
+161471000: system.mem_ctrl: Write from functional of size 1 on address 0x491493 data 0x1f C
+161472000: system.mem_ctrl: Write from functional of size 1 on address 0x491494 data 0x1f C
+161473000: system.mem_ctrl: Write from functional of size 1 on address 0x491495 data 0x1f C
+161474000: system.mem_ctrl: Write from functional of size 1 on address 0x491496 data 0x1f C
+161475000: system.mem_ctrl: Write from functional of size 1 on address 0x491497 data 0x1f C
+161476000: system.mem_ctrl: Write from functional of size 1 on address 0x491498 data 0x1f C
+161477000: system.mem_ctrl: Write from functional of size 1 on address 0x491499 data 0x1f C
+161618000: system.mem_ctrl: Write from cpu.data of size 8 on address 0x82cb0 data 0x4914a0 C

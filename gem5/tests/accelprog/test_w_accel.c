@@ -5,11 +5,11 @@
 
 #define COUNT 10
 
-// volatile uint8_t src_array[COUNT];
-// volatile uint8_t dst_array[COUNT];
+volatile uint8_t src_array[COUNT];
+volatile uint8_t dst_array[COUNT];
 
-uint8_t *src_array;
-uint8_t *dst_array;
+// uint8_t *src_array;
+// uint8_t *dst_array;
 
 void sensing_task() {
     // Implement sensing task here
@@ -21,7 +21,7 @@ void sensing_task() {
     for (int i = 0; i < COUNT; i++) {
         periInit(tmp_reg);
         tmpSense(&tmp, tmp_reg);
-        src_array[i] = i;
+        src_array[i] = 30;
         DelayMS(10);
     }
 
@@ -52,19 +52,20 @@ void heavy_task() {
 }
 
 void display_output() {
-    printf("Output: %d\n", dst_array[0]);
+    printf("dst_array[0] = %d\n", dst_array[0]);
+}
+
+void tasks() {
+    accel_map_registers();
+    sensing_task();
+    heavy_task();
+    display_output();
+    accel_unmap_registers();
 }
 
 int main() {
-    accel_map_registers();
-    // sensing task
-    sensing_task();
-    // compute task
-    heavy_task();
-    // display output
-    display_output();
 
-    accel_unmap_registers();
+    tasks();
 
     return 0;
 }

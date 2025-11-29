@@ -15,10 +15,12 @@ void test_tmp_sensor() {
     uint8_t* tmp_reg;
 
     periRegister(TMP_SENSOR_ID, &tmp_reg);
-    printf("Registers initialized\n");
 
-    periInit(tmp_reg);
-    tmpSense(&tmp, tmp_reg);
+    for (int i = 0; i < COUNT; i++) {
+        periInit(tmp_reg);
+        tmpSense(&tmp, tmp_reg);
+    }
+
 
     periLogout(TMP_SENSOR_ID);
 }
@@ -56,7 +58,7 @@ void test_addr_reg() {
 int main() {
     accel_map_registers();
     test_tmp_sensor();
-    test_addr_reg();
+    // test_addr_reg();
 
     return 0;
 }

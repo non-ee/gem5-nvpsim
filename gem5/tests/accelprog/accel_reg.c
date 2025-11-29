@@ -40,3 +40,14 @@ void accel_unmap_registers() {
     src_reg = NULL;
     dst_reg = NULL;
 }
+
+void accel_set_addr(uint64_t src_addr, uint64_t dst_addr) {
+    *src_reg = src_addr;
+    *dst_reg = dst_addr;
+}
+
+void accel_start() {
+    *cmd_reg = ACCEL_CMD_START;
+
+    while (!(*cmd_reg & ACCEL_CMD_DONE));
+}

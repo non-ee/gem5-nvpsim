@@ -17,6 +17,9 @@
 #define ACCEL_CMD_COMPUTE (1 << 4)
 #define ACCEL_CMD_DONE (1 << 5)
 
+#define SRC_PA 0x90000000
+#define DST_PA 0x90001000
+
 extern uint8_t *accel;
 extern uint8_t *cmd_reg;
 extern uint64_t *src_reg;
@@ -25,4 +28,8 @@ extern uint64_t *dst_reg;
 
 void accel_map_registers();
 void accel_unmap_registers();
+
+void accel_set_addr(uint64_t src_addr, uint64_t dst_addr);
+void accel_start();
+
 #endif
