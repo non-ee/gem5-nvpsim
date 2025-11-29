@@ -28,12 +28,11 @@
 # Authors: Nathan Binkert
 #          Rick Strong
 
-from m5.SimObject import SimObject
+from DVFSHandler import *
 from m5.defines import buildEnv
 from m5.params import *
 from m5.proxy import *
-
-from DVFSHandler import *
+from m5.SimObject import SimObject
 from SimpleMemory import *
 
 
@@ -84,7 +83,7 @@ class System(MemObject):
     accel_range = Param.AddrRange(
         AddrRange(0, 0), "Physical address range of accelerator MMIO"
     )
-    accel_vaddr = Param.Addr(0, "Virtual address base for accelerator MMIO")
+    accel_vaddr = Param.Addr(0x20200000, "Virtual address base for accelerator MMIO")
 
     cache_line_size = Param.Unsigned(64, "Cache line size in bytes")
 

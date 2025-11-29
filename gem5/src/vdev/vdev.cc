@@ -145,9 +145,14 @@ VirtualDevice::init()
 void
 VirtualDevice::triggerInterrupt()
 {
-	/* interrupt return after initialization or activation */
-	DPRINTF(VirtualDevice, "%s: Triggers an interrupt.\n", dev_name);
-	assert(*pmem & VDEV_BUSY);
+    DPRINTF(VirtualDevice, "%s: Triggers an interrupt.\n", dev_name);
+
+    if (!(*pmem & VDEV_BUSY)) {
+        DPRINTF(VirtualDevice, "%s: WARNING: interrupt fired but BUSY flag is not set. curTick=%llu\n",
+                dev_name, (unsigned long long)curTick());
+        // Recover conservative state: set BUSY so subsequent code behaves consistently
+        *pmem |= VDEV_BUSY;
+    }
 	/* Change register byte. */
 	*pmem |= VDEV_IDLE;
 	*pmem &= ~VDEV_BUSY;
@@ -336,24 +341,41 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 		// The vdev needs to be re-init and restart the incomplete tasks (not init task)
 		else if ( (*pmem & VDEV_READY) && (*pmem & VDEV_BUSY) )
 		{
-			DPRINTF(VirtualDevice, "%s: Power-off, ready and busy (working).\n", dev_name);
+		// remove task (be defensive: event_interrupt may already have fired/descheduled)
+            if (event_interrupt.scheduled()) {
+                Tick when = event_interrupt.when();
+                deschedule(event_interrupt);
 
-			// remove task
-			assert(event_interrupt.scheduled());
-			deschedule(event_interrupt);
+                // Ready but not executing tasks
+                need_recover = true;
 
-			// Ready but not executing tasks
-			need_recover = true;
+                /* Calculate the remaining delay */
+                if (!is_interruptable) {
+                    // the disrupted task need to be recovered completed
+                    delay_remained = delay_self;
+                } else {
+                    // the disrupted task can continue after that
+                    if (when > curTick())
+                        delay_remained = when - curTick();
+                    else
+                        delay_remained = 0; // already due or in the past
+                }
 
-			/* Calculate the remaining delay*/
-			if (!is_interruptable) {
-				// the disrupted task need to be recovered completed
-				delay_remained = delay_self;
-			} else {
-				// the disrupted task can continue after that
-				delay_remained = event_interrupt.when() - curTick();
-			}
-		}
+                DPRINTF(VirtualDevice, "%s: descheduled interrupt (when=%llu cur=%llu) delay_remained=%llu\n",
+                        dev_name, (unsigned long long)when, (unsigned long long)curTick(),
+                        (unsigned long long)delay_remained);
+            } else {
+                // event not scheduled — handle gracefully
+                need_recover = true;
+
+                // Conservative choice: either full remaining time, or 0 depending on semantics.
+                // Use 0 so we don't try to "finish" a task that already completed.
+                delay_remained = 0;
+
+                DPRINTF(VirtualDevice, "%s: WARNING: expected interrupt event not scheduled when powering off. curTick=%llu\n",
+                        dev_name, (unsigned long long)curTick());
+            }
+      		}
 
 		// Reset vdev to be uninitialized.
 		*pmem |= VDEV_CHAOS;

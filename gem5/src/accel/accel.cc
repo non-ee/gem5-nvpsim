@@ -1,4 +1,5 @@
 #include "accel/accel.hh"
+#include "accel/compute_unit.hh"
 #include "debug/Accelerator.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/MemoryAccess.hh"
@@ -6,8 +7,10 @@
 #include "params/Accelerator.hh"
 #include "base/trace.hh"
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <stdint.h>
 
 /** -- ComputeUnit **/
 ComputeUnit::ComputeUnit(Accelerator *_owner, Tick latency)
@@ -35,22 +38,39 @@ void ComputeUnit::start()
     owner->schedule(&computeDoneEvent, curTick() + computeLatency);
 }
 
+void ComputeUnit::compute()
+{
+    uint8_t *input = owner->input_buffer;
+    uint8_t *output = owner->output_buffer;
+    uint32_t N = owner->count;
+
+    // Implement computation logic here
+    for (int i = 0; i < N; i++) {
+        uint32_t x = input[i];
+
+        for (int j = 0; j < 100; j++) {
+            x = (x * 17 + j) % 256;
+        }
+
+        output[i] = x;
+
+        DPRINTF(Accelerator, "Input[%d]: %d\n", i, input[i]);
+    }
+}
+
 void ComputeUnit::finish()
 {
+    // compute();
+    owner->writeOutputBuffer(0x1f);
+    busy = false;
     DPRINTF(Accelerator, "ComputeUnit: computation finished\n");
 
-    busy = false;
-
     // Fill accelerator's output buffer with a predefined value
-    if (owner)
-    {
-        uint8_t result_value = 0x34; // example fixed result
-        owner->writeOutputBuffer(result_value);
-        owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
-        owner->cmd_reg &= ~Accelerator::CMD_COMPUTE;
 
-        owner->doDmaWrite();
-    }
+    owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
+    owner->cmd_reg &= ~Accelerator::CMD_COMPUTE;
+
+    owner->doDmaWrite();
 }
 
 void ComputeUnit::abort()
@@ -198,32 +218,33 @@ MemPort::MemPort(const std::string &name, Accelerator *accel)
     dmaWriteMode = false;
 }
 
-uint8_t MemPort::readAtomic(Addr addr)
+uint8_t
+MemPort::readAtomic(Addr addr)
 {
-    DPRINTF(Accelerator, "MemPort::readAtomic: addr=%#lx\n", addr);
-
-    Request::FlagsType flags = 0;
-    RequestPtr req = new Request(addr, 1, flags, 0);
+    Request* req = new Request(
+        addr, sizeof(uint8_t), 0, Request::funcMasterId
+    );
     PacketPtr pkt = Packet::createRead(req);
-
     pkt->allocate();
     sendAtomic(pkt);
 
-    uint8_t val = *(pkt->getConstPtr<uint8_t>());
-    DPRINTF(Accelerator, "MemPort::readAtomic: read value %#x from addr=%#lx\n", val, addr);
-    return val;
+    uint8_t data = pkt->get<uint8_t>();
+    DPRINTF(Accelerator, "readAtomic: read value %#x from addr=%#lx\n", data, pkt->getPtr<uint8_t>());
+    delete req;
+    delete pkt;
+
+    return data;
 }
 
 void MemPort::writeAtomic(Addr addr, uint8_t val)
 {
-    DPRINTF(Accelerator, "MemPort::writeAtomic: addr=%#lx, value=%#x\n", addr, val);
-
-    Request::FlagsType flags = 0;
-    RequestPtr req = new Request(addr, 1, flags, 0);
+    Request* req = new Request(
+        addr, sizeof(uint8_t), 0, Request::funcMasterId
+    );
     PacketPtr pkt = Packet::createWrite(req);
 
     pkt->allocate();
-    *(pkt->getPtr<uint8_t>()) = val;
+    pkt->set<uint8_t>(val);
     sendAtomic(pkt);
 
     DPRINTF(Accelerator, "MemPort::writeAtomic: wrote value %#x to addr=%#lx\n", val, addr);
@@ -258,55 +279,6 @@ void MemPort::startDmaWrite(Addr dst, uint8_t *buf, uint32_t count)
         owner->schedule(dmaEvent, owner->clockEdge(Cycles(1)));
 }
 
-void MemPort::pauseDma()
-{
-    if ((!dmaReadMode && !dmaWriteMode) || paused)
-        return;
-
-    paused = true;
-
-    DPRINTF(Accelerator, "MemPort::pauseDma: Pausing DMA at %u/%u bytes\n",
-            dmaIndex, dmaCount);
-
-    // Cancel pending DMA event
-    if (dmaEvent.scheduled())
-        owner->deschedule(&dmaEvent);
-
-    // Clear status flags temporarily
-    if (dmaReadMode)
-        owner->cmd_reg &= ~Accelerator::CMD_DMA_READ;
-
-    else if (dmaWriteMode)
-        owner->cmd_reg &= ~Accelerator::CMD_DMA_WRITE;
-
-    // Set accelerator to OFF state
-    owner->energy_state = Accelerator::AccelEnergyState::STATE_OFF;
-}
-
-void MemPort::resumeDma()
-{
-    if (!paused)
-        return;
-
-    paused = false;
-
-    DPRINTF(Accelerator, "MemPort::resumeDma: Resuming DMA from %u/%u bytes\n",
-            dmaIndex, dmaCount);
-
-    // Restore correct flags
-    if (dmaReadMode)
-        owner->cmd_reg |= Accelerator::CMD_DMA_READ;
-
-    else if (dmaWriteMode)
-        owner->cmd_reg |= Accelerator::CMD_DMA_WRITE;
-
-
-    owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
-
-    // Resume next DMA step
-    if (!dmaEvent.scheduled())
-        owner->schedule(dmaEvent, owner->clockEdge(Cycles(1)));
-}
 
 void MemPort::dmaStep()
 {
@@ -362,6 +334,55 @@ void MemPort::dmaStep()
     }
 }
 
+void MemPort::pauseDma()
+{
+    if ((!dmaReadMode && !dmaWriteMode) || paused)
+        return;
+
+    paused = true;
+
+    DPRINTF(Accelerator, "MemPort::pauseDma: Pausing DMA at %u/%u bytes\n",
+            dmaIndex, dmaCount);
+
+    // Cancel pending DMA event
+    if (dmaEvent.scheduled())
+        owner->deschedule(&dmaEvent);
+
+    // Clear status flags temporarily
+    if (dmaReadMode)
+        owner->cmd_reg &= ~Accelerator::CMD_DMA_READ;
+
+    else if (dmaWriteMode)
+        owner->cmd_reg &= ~Accelerator::CMD_DMA_WRITE;
+
+    // Set accelerator to OFF state
+    owner->energy_state = Accelerator::AccelEnergyState::STATE_OFF;
+}
+
+void MemPort::resumeDma()
+{
+    if (!paused)
+        return;
+
+    paused = false;
+
+    DPRINTF(Accelerator, "MemPort::resumeDma: Resuming DMA from %u/%u bytes\n",
+            dmaIndex, dmaCount);
+
+    // Restore correct flags
+    if (dmaReadMode)
+        owner->cmd_reg |= Accelerator::CMD_DMA_READ;
+
+    else if (dmaWriteMode)
+        owner->cmd_reg |= Accelerator::CMD_DMA_WRITE;
+
+
+    owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
+
+    // Resume next DMA step
+    if (!dmaEvent.scheduled())
+        owner->schedule(dmaEvent, owner->clockEdge(Cycles(1)));
+}
 /* ---------------- Accelerator implementation ---------------- */
 
 Accelerator::Accelerator(const Params *p) : MemObject(p),

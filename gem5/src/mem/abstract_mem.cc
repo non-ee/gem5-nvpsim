@@ -372,8 +372,9 @@ AbstractMemory::access(PacketPtr pkt)
         if (pkt->isLLSC()) {
             trackLoadLocked(pkt);
         }
-        if (pmemAddr)
+        if (pmemAddr) {
             memcpy(pkt->getPtr<uint8_t>(), hostAddr, pkt->getSize());
+        }
         TRACE_PACKET(pkt->req->isInstFetch() ? "IFetch" : "Read");
         numReads[pkt->req->masterId()]++;
         bytesRead[pkt->req->masterId()] += pkt->getSize();

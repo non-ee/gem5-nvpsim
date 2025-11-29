@@ -10,6 +10,8 @@
 #include <cstdint>
 #include <string>
 #include <sys/types.h>
+#include "base/types.hh"
+
 
 class Accelerator;
 
@@ -44,6 +46,7 @@ class ComputeUnit
     ComputeUnit(Accelerator* _owner, Tick latency);
 
     void start();
+    void compute();
     void finish();
     void abort();
 

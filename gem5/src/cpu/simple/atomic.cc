@@ -669,15 +669,42 @@ AtomicSimpleCPU::printAddr(Addr a)
 void
 AtomicSimpleCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_isa)
 {
-	//in_interrupt = 1;
-	DPRINTF(VirtualDevice, "%s calls INT, latency = %#lu\n", vdev_name, delay_isa);
+    DPRINTF(VirtualDevice, "%s calls INT, latency = %#lu\n", vdev_name, delay_isa);
 
-	Tick time = tickEvent.when();
-	if (delay_isa % clockPeriod())
-		delay_isa += clockPeriod() - delay_isa % clockPeriod();
-	time += delay_isa;
-	reschedule(tickEvent, time);
+    // align delay to clockPeriod
+    if (delay_isa % clockPeriod())
+        delay_isa += clockPeriod() - delay_isa % clockPeriod();
+
+    // compute a safe base time
+    Tick base_when = curTick();
+    if (tickEvent.scheduled()) {
+        Tick w = tickEvent.when();
+        // use the later of event.when() and curTick()
+        base_when = (w > curTick()) ? w : curTick();
+    }
+
+    Tick time = base_when + delay_isa;
+
+    // ensure time is in the future by at least one clockPeriod
+    if (time <= curTick())
+        time = curTick() + clockPeriod();
+
+    DPRINTF(VirtualDevice, "%s: scheduling CPU tickEvent: scheduled=%d base_when=%llu delay=%llu -> time=%llu cur=%llu\n",
+            vdev_name, tickEvent.scheduled(),
+            (unsigned long long)base_when,
+            (unsigned long long)delay_isa,
+            (unsigned long long)time,
+            (unsigned long long)curTick());
+
+    if (tickEvent.scheduled()) {
+        // event exists already — move it
+        reschedule(tickEvent, time);
+    } else {
+        // event not scheduled — create it
+        schedule(tickEvent, time);
+    }
 }
+
 
 // The CPU-triggered virtual device recovery
 void
