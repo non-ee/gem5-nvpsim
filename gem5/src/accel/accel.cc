@@ -229,6 +229,7 @@ MemPort::readAtomic(Addr addr)
     sendAtomic(pkt);
 
     uint8_t data = pkt->get<uint8_t>();
+    DPRINTF(Accelerator, "Vaddr: %p, Paddr: %p", req->getVaddr(), req->getPaddr());
     DPRINTF(Accelerator, "readAtomic: read value %#x from addr=%#lx\n", data, pkt->getPtr<uint8_t>());
     delete req;
     delete pkt;

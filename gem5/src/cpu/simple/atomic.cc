@@ -336,6 +336,7 @@ Fault
 AtomicSimpleCPU::readMem(Addr addr, uint8_t * data,
 						 unsigned size, unsigned flags)
 {
+    DPRINTF(SimpleCPU, "readMem: addr=%#x size=%d flags=%d\n", addr, size, flags);
 	// use the CPU's statically allocated read request and packet objects
 	Request *req = &data_read_req;
 
