@@ -2,7 +2,6 @@
 #include "delay.h"
 #include "peripheral.h"
 
-#define SIZE 1024
 #define COUNT 10
 
 volatile uint8_t src_array[COUNT];

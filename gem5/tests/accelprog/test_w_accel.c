@@ -21,7 +21,7 @@ void sensing_task() {
     for (int i = 0; i < COUNT; i++) {
         periInit(tmp_reg);
         tmpSense(&tmp, tmp_reg);
-        src_array[i] = 30;
+        src_array[i] = tmp;
         DelayMS(10);
     }
 

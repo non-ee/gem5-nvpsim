@@ -1,10 +1,8 @@
 #include "accel/accel.hh"
-#include "accel/compute_unit.hh"
 #include "debug/Accelerator.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/MemoryAccess.hh"
 #include "engy/state_machine.hh"
-#include "params/Accelerator.hh"
 #include "base/trace.hh"
 #include <cstdint>
 #include <cstdio>
@@ -13,7 +11,7 @@
 #include <stdint.h>
 
 /** -- ComputeUnit **/
-ComputeUnit::ComputeUnit(Accelerator *_owner, Tick latency)
+Accelerator::ComputeUnit::ComputeUnit(Accelerator *_owner, Tick latency)
     : owner(_owner),
       busy(false),
       computeLatency(latency),
@@ -23,12 +21,13 @@ ComputeUnit::ComputeUnit(Accelerator *_owner, Tick latency)
 {
 }
 
-void ComputeUnit::start()
+void Accelerator::ComputeUnit::start()
 {
+    // DPRINTF(Accelerator, "ComputeUnit: start compute (latency=%lu)\n", computeLatency);
+
     if (busy)
         return;
 
-    DPRINTF(Accelerator, "ComputeUnit: start compute (latency=%lu)\n", computeLatency);
     busy = true;
     paused = false;
     computeStartTick = curTick();
@@ -38,7 +37,7 @@ void ComputeUnit::start()
     owner->schedule(&computeDoneEvent, curTick() + computeLatency);
 }
 
-void ComputeUnit::compute()
+void Accelerator::ComputeUnit::compute()
 {
     uint8_t *input = owner->input_buffer;
     uint8_t *output = owner->output_buffer;
@@ -53,71 +52,27 @@ void ComputeUnit::compute()
         }
 
         output[i] = x;
-
-        DPRINTF(Accelerator, "Input[%d]: %d\n", i, input[i]);
     }
 }
 
-void ComputeUnit::finish()
+void Accelerator::ComputeUnit::finish()
 {
-    // compute();
-    owner->writeOutputBuffer(0x1f);
+    // DPRINTF(Accelerator, "%s: computation finished\n", owner->name());
+
+    compute();
+    // owner->writeOutputBuffer(0x1f);
     busy = false;
-    DPRINTF(Accelerator, "ComputeUnit: computation finished\n");
 
     // Fill accelerator's output buffer with a predefined value
-
-    owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
-    owner->cmd_reg &= ~Accelerator::CMD_COMPUTE;
-
-    owner->doDmaWrite();
+    owner->onComputeDone();
 }
 
-void ComputeUnit::abort()
+void Accelerator::ComputeUnit::abort()
 {
     // Handle interrupt logic here
-    DPRINTF(Accelerator, "ComputeUnit: Aborting computation\n");
-
     busy = false;
     if (computeDoneEvent.scheduled())
         owner->deschedule(&computeDoneEvent);
-}
-
-void ComputeUnit::pause()
-{
-    if (!busy || paused)
-        return;
-
-    paused = true;
-
-    Tick elapsed = curTick() - computeStartTick;
-    remainingLatency = (elapsed < computeLatency) ? (computeLatency - elapsed) : 0;
-
-    DPRINTF(Accelerator, "ComputeUnit: paused (remaining=%lu)\n", remainingLatency);
-
-    // Cancel the scheduled done event
-    if (computeDoneEvent.scheduled())
-        owner->deschedule(&computeDoneEvent);
-
-    busy = false;
-    owner->cmd_reg &= ~Accelerator::CMD_COMPUTE;
-    owner->energy_state = Accelerator::AccelEnergyState::STATE_OFF;
-}
-
-void ComputeUnit::resume()
-{
-    if (!paused || busy)
-        return;
-
-    DPRINTF(Accelerator, "ComputeUnit: resume (remaining=%lu)\n", remainingLatency);
-
-    paused = false;
-    busy = true;
-    computeStartTick = curTick();
-
-    owner->cmd_reg |= Accelerator::CMD_COMPUTE;
-    owner->energy_state = Accelerator::AccelEnergyState::STATE_ON;
-    owner->schedule(&computeDoneEvent, curTick() + remainingLatency);
 }
 
 /* -- TickEvent --- */
@@ -166,38 +121,38 @@ void Accelerator::tick()
 
 /* ---------------- CtrlPort implementation ---------------- */
 
-CtrlPort::CtrlPort(const std::string &name, Accelerator *accel)
+Accelerator::CtrlPort::CtrlPort(const std::string &name, Accelerator *accel)
     : SlavePort(name, accel), owner(accel)
 {
 }
 
 /* CtrlPort::recvAtomic handles every MMIO access to the accelerator’s control register range. */
-Tick CtrlPort::recvAtomic(PacketPtr pkt)
+Tick Accelerator::CtrlPort::recvAtomic(PacketPtr pkt)
 {
     assert(owner);
     return owner->recvAtomic(pkt);
 }
 
-void CtrlPort::recvFunctional(PacketPtr pkt)
+void Accelerator::CtrlPort::recvFunctional(PacketPtr pkt)
 {
     assert(owner);
     owner->recvFunctional(pkt);
 }
 
-bool CtrlPort::recvTimingReq(PacketPtr pkt)
+bool Accelerator::CtrlPort::recvTimingReq(PacketPtr pkt)
 {
     assert(owner);
     return owner->recvTimingReq(pkt);
 }
 
-void CtrlPort::recvRespRetry()
+void Accelerator::CtrlPort::recvRespRetry()
 {
     assert(owner);
     owner->recvRespRetry();
 }
 
 AddrRangeList
-CtrlPort::getAddrRanges() const
+Accelerator::CtrlPort::getAddrRanges() const
 {
     assert(owner);
     AddrRangeList list;
@@ -205,200 +160,15 @@ CtrlPort::getAddrRanges() const
     return list;
 }
 
-/* ---------------- MemPort implementation ---------------- */
-
-MemPort::MemPort(const std::string &name, Accelerator *accel)
-    : MasterPort(name, accel),
-      owner(accel),
-      dmaEvent(this, false, Event::Accelerator_DMA_Pri)
-{
-    dmaIndex = 0;
-    dmaCount = 0;
-    dmaReadMode = false;
-    dmaWriteMode = false;
-}
-
-uint8_t
-MemPort::readAtomic(Addr addr)
-{
-    Request* req = new Request(
-        addr, sizeof(uint8_t), 0, Request::funcMasterId
-    );
-    PacketPtr pkt = Packet::createRead(req);
-    pkt->allocate();
-    sendAtomic(pkt);
-
-    uint8_t data = pkt->get<uint8_t>();
-    DPRINTF(Accelerator, "Vaddr: %p, Paddr: %p", req->getVaddr(), req->getPaddr());
-    DPRINTF(Accelerator, "readAtomic: read value %#x from addr=%#lx\n", data, pkt->getPtr<uint8_t>());
-    delete req;
-    delete pkt;
-
-    return data;
-}
-
-void MemPort::writeAtomic(Addr addr, uint8_t val)
-{
-    Request* req = new Request(
-        addr, sizeof(uint8_t), 0, Request::funcMasterId
-    );
-    PacketPtr pkt = Packet::createWrite(req);
-
-    pkt->allocate();
-    pkt->set<uint8_t>(val);
-    sendAtomic(pkt);
-
-    DPRINTF(Accelerator, "MemPort::writeAtomic: wrote value %#x to addr=%#lx\n", val, addr);
-}
-
-void MemPort::startDmaRead(Addr src, uint8_t *buf, uint32_t count)
-{
-    dmaAddr = src;
-    dmaBuffer = buf;
-    dmaCount = count;
-    dmaIndex = 0;
-    dmaReadMode = true;
-
-    DPRINTF(Accelerator, "MemPort::startDmaRead: src=%#lx, count=%u\n", src, count);
-
-    // Schedule first DMA step immediately
-    if (!dmaEvent.scheduled())
-        owner->schedule(dmaEvent, owner->clockEdge(Cycles(1)));
-}
-
-void MemPort::startDmaWrite(Addr dst, uint8_t *buf, uint32_t count)
-{
-    dmaAddr = dst;
-    dmaBuffer = buf;
-    dmaCount = count;
-    dmaIndex = 0;
-    dmaWriteMode = true;
-
-    DPRINTF(Accelerator, "MemPort::startDmaWrite: dst=%#lx, count=%u\n", dst, count);
-
-    if (!dmaEvent.scheduled())
-        owner->schedule(dmaEvent, owner->clockEdge(Cycles(1)));
-}
-
-
-void MemPort::dmaStep()
-{
-    if (dmaIndex < dmaCount)
-    {
-        if (dmaReadMode)
-        {
-            uint8_t data = readAtomic(dmaAddr + dmaIndex);
-            dmaBuffer[dmaIndex] = data;
-        }
-        else if (dmaWriteMode)
-        {
-            uint8_t data = dmaBuffer[dmaIndex];
-            writeAtomic(dmaAddr + dmaIndex, data);
-        }
-
-        dmaIndex++;
-
-        if (dmaIndex % 16 == 0)
-        {
-            DPRINTF(Accelerator, "MemPort::dmaStep: transferred %u/%u bytes\n",
-                    dmaIndex, dmaCount);
-        }
-
-        // Continue DMA next tick
-        owner->schedule(dmaEvent, owner->clockEdge(Cycles(1)));
-    }
-    else
-    {
-        // DMA complete
-        if (dmaReadMode)
-        {
-            owner->cmd_reg &= ~Accelerator::CMD_DMA_READ;
-            dmaReadMode = false;
-
-            DPRINTF(Accelerator, "MemPort::dmaStep: DMA READ complete (%u bytes)\n", dmaCount);
-
-            // trigger compute after read
-            owner->doCompute();
-        }
-        else if (dmaWriteMode)
-        {
-            owner->cmd_reg &= ~Accelerator::CMD_DMA_WRITE;
-            dmaWriteMode = false;
-
-            DPRINTF(Accelerator, "MemPort::dmaStep: DMA WRITE complete (%u bytes)\n", dmaCount);
-
-            // optionally signal CPU or interrupt
-            owner->triggerInterrupt();
-        }
-
-        owner->energy_state = Accelerator::STATE_IDLE;
-    }
-}
-
-void MemPort::pauseDma()
-{
-    if ((!dmaReadMode && !dmaWriteMode) || paused)
-        return;
-
-    paused = true;
-
-    DPRINTF(Accelerator, "MemPort::pauseDma: Pausing DMA at %u/%u bytes\n",
-            dmaIndex, dmaCount);
-
-    // Cancel pending DMA event
-    if (dmaEvent.scheduled())
-        owner->deschedule(&dmaEvent);
-
-    // Clear status flags temporarily
-    if (dmaReadMode)
-        owner->cmd_reg &= ~Accelerator::CMD_DMA_READ;
-
-    else if (dmaWriteMode)
-        owner->cmd_reg &= ~Accelerator::CMD_DMA_WRITE;
-
-    // Set accelerator to OFF state
-    owner->energy_state = Accelerator::AccelEnergyState::STATE_OFF;
-}
-
-void MemPort::resumeDma()
-{
-    if (!paused)
-        return;
-
-    paused = false;
-
-    DPRINTF(Accelerator, "MemPort::resumeDma: Resuming DMA from %u/%u bytes\n",
-            dmaIndex, dmaCount);
-
-    // Restore correct flags
-    if (dmaReadMode)
-        owner->cmd_reg |= Accelerator::CMD_DMA_READ;
-
-    else if (dmaWriteMode)
-        owner->cmd_reg |= Accelerator::CMD_DMA_WRITE;
-
-
-    owner->energy_state = Accelerator::AccelEnergyState::STATE_IDLE;
-
-    // Resume next DMA step
-    if (!dmaEvent.scheduled())
-        owner->schedule(dmaEvent, owner->clockEdge(Cycles(1)));
-}
 /* ---------------- Accelerator implementation ---------------- */
-
 Accelerator::Accelerator(const Params *p) : MemObject(p),
                                             ctrlPort(name() + ".ctrlPort", this),
-                                            memPort(name() + ".memPort", this),
                                             computeUnit(this, p->delay_compute),
                                             tickEvent(this),
 
                                             cpu(p->cpu),
+                                            dmaCtrl(p->dmaCtrl),
                                             controlRange(p->controlRange),
-
-                                            cmd_reg(0),
-                                            src_addr(0),
-                                            dst_addr(0),
-                                            busy(false),
 
                                             count(p->count),
                                             delay_init(p->delay_init),
@@ -409,8 +179,20 @@ Accelerator::Accelerator(const Params *p) : MemObject(p),
                                             energy_idle_per_tick(p->energy_idle_per_tick),
                                             energy_state(AccelEnergyState::STATE_OFF),
 
+                                            debug_io(p->debug_io),
                                             event_init(this, false, Event::Accelerator_Interrupt)
 {
+    portProxy = new SETranslatingPortProxy(
+        p->cpu->getDataPort(),
+        system->getThreadContext(0)->getProcessPtr(),
+        SETranslatingPortProxy::Never
+    );
+
+    src_addr = 0;
+    dst_addr = 0;
+    cmd_reg = 0;
+    busy = false;
+
     /* configure buffers */
     input_buffer = new uint8_t[count];
     output_buffer = new uint8_t[count];
@@ -428,6 +210,11 @@ Accelerator::~Accelerator()
         delete[] output_buffer;
         output_buffer = nullptr;
     }
+    if (portProxy)
+    {
+        delete portProxy;
+        portProxy = nullptr;
+    }
 }
 
 void Accelerator::init()
@@ -441,8 +228,7 @@ void Accelerator::init()
     DPRINTF(Accelerator, "%s initialized: controlRange: %#llx - %#llx\n",
             name(), controlRange.start(), controlRange.end());
 
-    printf("Accelerator's controlRange: %#lx - %#lx\n", controlRange.start(), controlRange.end());
-
+    dmaCtrl->setMemoryInterface(&portProxy);
     // set default energy state
     energy_state = STATE_OFF;
     if (!tickEvent.scheduled())
@@ -461,14 +247,26 @@ Accelerator::getSlavePort(const std::string &if_name, PortID idx)
     return MemObject::getSlavePort(if_name, idx);
 }
 
-BaseMasterPort &
-Accelerator::getMasterPort(const std::string &if_name, PortID idx)
+void Accelerator::onDmaReadDone()
 {
-    if (if_name == "memPort" || if_name == "mem")
-    {
-        return memPort;
-    }
-    return MemObject::getMasterPort(if_name, idx);
+    // Handle DMA read completion
+    cmd_reg &= ~CMD_DMA_READ;
+    doCompute();
+}
+
+void Accelerator::onDmaWriteDone()
+{
+    // Handle DMA write completion
+    cmd_reg &= ~CMD_DMA_WRITE;
+    triggerInterrupt();
+}
+
+void Accelerator::onComputeDone()
+{
+    // Handle compute completion
+    cmd_reg &= ~CMD_COMPUTE;
+    energy_state = AccelEnergyState::STATE_IDLE;
+    doDmaWrite();
 }
 
 /** Receive atomic request **/
@@ -521,6 +319,7 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
         case 0x00:
             ret = cmd_reg;
             break;
+
         case 0x14: // STATUS
             ret = busy ? 1 : 0;
             break;
@@ -587,7 +386,6 @@ void Accelerator::handleInterrupt()
     }
     else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
     {
-        memPort.pauseDma();
         DPRINTF(Accelerator, "MemPort: DMA paused\n");
     }
 }
@@ -601,7 +399,6 @@ void Accelerator::handleRecovery()
     }
     else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
     {
-        memPort.resumeDma();
         DPRINTF(Accelerator, "MemPort: DMA resumed\n");
     }
 }
@@ -619,7 +416,13 @@ void Accelerator::doDmaRead()
     DPRINTF(Accelerator, "DMA read started...\n");
     cmd_reg |= CMD_DMA_READ;
     energy_state = AccelEnergyState::STATE_IDLE;
-    memPort.startDmaRead(src_addr, input_buffer, count);
+
+    dmaCtrl->startRead(
+        src_addr,
+        input_buffer,
+        count,
+        this
+    );
 }
 
 void Accelerator::doDmaWrite()
@@ -627,7 +430,13 @@ void Accelerator::doDmaWrite()
     DPRINTF(Accelerator, "DMA write started...\n");
     cmd_reg |= CMD_DMA_WRITE;
     energy_state = AccelEnergyState::STATE_IDLE;
-    memPort.startDmaWrite(dst_addr, output_buffer, count);
+
+    dmaCtrl->startWrite(
+        dst_addr,
+        output_buffer,
+        count,
+        this
+    );
 }
 
 void Accelerator::doCompute()

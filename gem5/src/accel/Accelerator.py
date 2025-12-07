@@ -1,6 +1,6 @@
+from AtomicSimpleCPU import AtomicSimpleCPU
 from m5.params import *
 from MemObject import MemObject
-from AtomicSimpleCPU import AtomicSimpleCPU
 
 
 class Accelerator(MemObject):
@@ -8,9 +8,9 @@ class Accelerator(MemObject):
     cxx_header = "accel/accel.hh"
 
     ctrlPort = SlavePort("Slave port of accelerator")
-    memPort = MasterPort("Master port of accelerator")
 
     cpu = Param.BaseCPU(NULL, "The cpu of the system")
+    dmaCtrl = Param.DmaCtrl(NULL, "The dma controller of the accelerator")
     controlRange = Param.AddrRange("1MB", "The control range of the accelerator")
     count = Param.Int(0, "The count of the element data")
 
@@ -21,3 +21,5 @@ class Accelerator(MemObject):
     energy_idle_per_tick = Param.Float(
         0.5, "The power consumption of the accelerator when idle"
     )
+
+    debug_io = Param.Bool(False, "Enable debug output")

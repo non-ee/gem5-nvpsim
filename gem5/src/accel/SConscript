@@ -1,7 +1,10 @@
 Import('*')
 
 Source('accel.cc')
+Source('dma_ctrl.cc')
 
 SimObject('Accelerator.py')
+SimObject('DmaCtrl.py')
 
 DebugFlag('Accelerator')
+DebugFlag('DmaCtrl')
