@@ -3,7 +3,7 @@
 #include "peripheral.h"
 #include <stdint.h>
 
-#define COUNT 10
+#define COUNT 50
 
 volatile uint8_t src_array[COUNT];
 volatile uint8_t dst_array[COUNT];
@@ -52,7 +52,7 @@ void heavy_task() {
 }
 
 void display_output() {
-    printf("dst_array[0] = %d\n", dst_array[0]);
+    printf("dst_array[0] = %d\n", dst_array[COUNT-1]);
 }
 
 void tasks() {

@@ -111,6 +111,16 @@ system.vdev0.need_log = 1
 
 
 ###################################
+###########  DMA Controller  ############
+###################################
+system.dma_ctrl = DmaCtrl()
+system.dma_ctrl.cpu = system.cpu
+system.dma_ctrl.s_energy_port = system.energy_mgmt.m_energy_port
+system.dma_ctrl.bandwidth = 8
+system.dma_ctrl.energy_per_tx = Float(1.0)
+system.dma_ctrl.debug_io = True
+
+###################################
 ###########  Accelerator  ############
 ###################################
 count = float(sys.argv[4])
@@ -122,7 +132,7 @@ system.accel = Accelerator()
 system.accel.cpu = system.cpu
 system.accel.s_energy_port = system.energy_mgmt.m_energy_port
 system.accel.ctrlPort = system.membus.master
-system.accel.memPort = system.membus.slave
+system.accel.dmaCtrl = system.dma_ctrl
 
 system.accel_range = AddrRange('514MB', '516MB')
 system.accel_vaddr = Addr('0x40000000')

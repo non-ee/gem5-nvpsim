@@ -4,76 +4,11 @@
 #include "debug/MemoryAccess.hh"
 #include "engy/state_machine.hh"
 #include "base/trace.hh"
-#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <stdint.h>
-
-/** -- ComputeUnit **/
-Accelerator::ComputeUnit::ComputeUnit(Accelerator *_owner, Tick latency)
-    : owner(_owner),
-      busy(false),
-      computeLatency(latency),
-      remainingLatency(0),
-      paused(false),
-      computeDoneEvent(this)
-{
-}
-
-void Accelerator::ComputeUnit::start()
-{
-    // DPRINTF(Accelerator, "ComputeUnit: start compute (latency=%lu)\n", computeLatency);
-
-    if (busy)
-        return;
-
-    busy = true;
-    paused = false;
-    computeStartTick = curTick();
-
-    // Schedule completion event after computeLatency ticks
-    // Tick latency = remainingLatency ? remainingLatency : computeLatency;
-    owner->schedule(&computeDoneEvent, curTick() + computeLatency);
-}
-
-void Accelerator::ComputeUnit::compute()
-{
-    uint8_t *input = owner->input_buffer;
-    uint8_t *output = owner->output_buffer;
-    uint32_t N = owner->count;
-
-    // Implement computation logic here
-    for (int i = 0; i < N; i++) {
-        uint32_t x = input[i];
-
-        for (int j = 0; j < 100; j++) {
-            x = (x * 17 + j) % 256;
-        }
-
-        output[i] = x;
-    }
-}
-
-void Accelerator::ComputeUnit::finish()
-{
-    // DPRINTF(Accelerator, "%s: computation finished\n", owner->name());
-
-    compute();
-    // owner->writeOutputBuffer(0x1f);
-    busy = false;
-
-    // Fill accelerator's output buffer with a predefined value
-    owner->onComputeDone();
-}
-
-void Accelerator::ComputeUnit::abort()
-{
-    // Handle interrupt logic here
-    busy = false;
-    if (computeDoneEvent.scheduled())
-        owner->deschedule(&computeDoneEvent);
-}
+#include <unistd.h>
 
 /* -- TickEvent --- */
 Accelerator::TickEvent::TickEvent(Accelerator *accel)
@@ -161,32 +96,27 @@ Accelerator::CtrlPort::getAddrRanges() const
 }
 
 /* ---------------- Accelerator implementation ---------------- */
-Accelerator::Accelerator(const Params *p) : MemObject(p),
-                                            ctrlPort(name() + ".ctrlPort", this),
-                                            computeUnit(this, p->delay_compute),
-                                            tickEvent(this),
+Accelerator::Accelerator(const Params *p) :
+    MemObject(p),
+    ctrlPort(name() + ".ctrlPort", this),
+    tickEvent(this),
 
-                                            cpu(p->cpu),
-                                            dmaCtrl(p->dmaCtrl),
-                                            controlRange(p->controlRange),
+    cpu(p->cpu),
+    dmaCtrl(p->dmaCtrl),
+    controlRange(p->controlRange),
 
-                                            count(p->count),
-                                            delay_init(p->delay_init),
-                                            delay_compute(p->delay_compute),
-                                            delay_cpu_interrupt(p->delay_cpu_interrupt),
+    count(p->count),
+    delay_init(p->delay_init),
+    delay_compute(p->delay_compute),
+    delay_cpu_interrupt(p->delay_cpu_interrupt),
 
-                                            energy_compute_per_tick(p->energy_compute_per_tick),
-                                            energy_idle_per_tick(p->energy_idle_per_tick),
-                                            energy_state(AccelEnergyState::STATE_OFF),
-
-                                            debug_io(p->debug_io),
-                                            event_init(this, false, Event::Accelerator_Interrupt)
+    energy_compute_per_tick(p->energy_compute_per_tick),
+    energy_idle_per_tick(p->energy_idle_per_tick),
+    energy_state(AccelEnergyState::STATE_OFF),
+    event_init(this, false, Event::Accelerator_Interrupt)
 {
-    portProxy = new SETranslatingPortProxy(
-        p->cpu->getDataPort(),
-        system->getThreadContext(0)->getProcessPtr(),
-        SETranslatingPortProxy::Never
-    );
+    /* configure compute unit */
+    computeUnit = new ComputeUnit(getEventQueue(0), delay_compute);
 
     src_addr = 0;
     dst_addr = 0;
@@ -200,6 +130,12 @@ Accelerator::Accelerator(const Params *p) : MemObject(p),
 
 Accelerator::~Accelerator()
 {
+    if (computeUnit)
+    {
+        delete computeUnit;
+        computeUnit = nullptr;
+    }
+
     if (input_buffer)
     {
         delete[] input_buffer;
@@ -210,25 +146,17 @@ Accelerator::~Accelerator()
         delete[] output_buffer;
         output_buffer = nullptr;
     }
-    if (portProxy)
-    {
-        delete portProxy;
-        portProxy = nullptr;
-    }
 }
 
 void Accelerator::init()
 {
     // register port ranges
     if (ctrlPort.isConnected())
-    {
         ctrlPort.sendRangeChange();
-    }
 
     DPRINTF(Accelerator, "%s initialized: controlRange: %#llx - %#llx\n",
             name(), controlRange.start(), controlRange.end());
 
-    dmaCtrl->setMemoryInterface(&portProxy);
     // set default energy state
     energy_state = STATE_OFF;
     if (!tickEvent.scheduled())
@@ -261,12 +189,85 @@ void Accelerator::onDmaWriteDone()
     triggerInterrupt();
 }
 
+/* ComputeTask interfaces implementation */
 void Accelerator::onComputeDone()
 {
-    // Handle compute completion
+    DPRINTF(Accelerator, "Compute done...\n");
     cmd_reg &= ~CMD_COMPUTE;
     energy_state = AccelEnergyState::STATE_IDLE;
     doDmaWrite();
+}
+
+void Accelerator::onComputeAbort()
+{
+    DPRINTF(Accelerator, "Compute failed...\n");
+    cmd_reg &= ~CMD_COMPUTE;
+    energy_state = AccelEnergyState::STATE_IDLE;
+}
+
+/** Initialize the accelerator */
+void Accelerator::initEvent()
+{
+    // Initialize any necessary resources or state
+    DPRINTF(Accelerator, "Initialization done\n");
+    doDmaRead();
+}
+
+void Accelerator::doDmaRead()
+{
+    DPRINTF(Accelerator, "DMA read started...\n");
+    cmd_reg |= CMD_DMA_READ;
+    energy_state = AccelEnergyState::STATE_IDLE;
+
+    if (!dmaCtrl) {
+        panic("DMA controller not initialized");
+    }
+
+    dmaCtrl->startRead(
+        src_addr,
+        input_buffer,
+        count,
+        this
+    );
+}
+
+void Accelerator::doDmaWrite()
+{
+    DPRINTF(Accelerator, "DMA write started...\n");
+    cmd_reg |= CMD_DMA_WRITE;
+    energy_state = AccelEnergyState::STATE_IDLE;
+
+    if (!dmaCtrl) {
+        panic("DMA controller not initialized");
+    }
+
+    dmaCtrl->startWrite(
+        dst_addr,
+        output_buffer,
+        count,
+        this
+    );
+}
+
+void Accelerator::doCompute()
+{
+    DPRINTF(Accelerator, "Compute started...\n");
+    cmd_reg |= CMD_COMPUTE;
+    energy_state = AccelEnergyState::STATE_ON;
+    computeUnit->startCompute(
+        input_buffer,
+        output_buffer,
+        count,
+        this
+    );
+}
+
+void Accelerator::abortCompute()
+{
+    DPRINTF(Accelerator, "Compute aborted...\n");
+    cmd_reg &= ~CMD_COMPUTE;
+    energy_state = AccelEnergyState::STATE_OFF;
+    computeUnit->abort();
 }
 
 /** Receive atomic request **/
@@ -358,12 +359,18 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 {
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
     {
+        if (energy_state == AccelEnergyState::STATE_OFF)
+            return 1;
+
         DPRINTF(Accelerator, "Powering off accelerator\n");
         energy_state = AccelEnergyState::STATE_OFF;
         handleInterrupt();
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
+        if (energy_state == AccelEnergyState::STATE_ON)
+            return 1;
+
         DPRINTF(Accelerator, "Powering on accelerator\n");
         energy_state = AccelEnergyState::STATE_ON;
         handleRecovery();
@@ -380,10 +387,8 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 void Accelerator::handleInterrupt()
 {
     if (cmd_reg & CMD_COMPUTE)
-    {
-        computeUnit.abort();
-        DPRINTF(Accelerator, "ComputeUnit: aborted\n");
-    }
+        abortCompute();
+
     else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
     {
         DPRINTF(Accelerator, "MemPort: DMA paused\n");
@@ -393,68 +398,11 @@ void Accelerator::handleInterrupt()
 void Accelerator::handleRecovery()
 {
     if (cmd_reg & CMD_COMPUTE)
-    {
-        computeUnit.start();
-        DPRINTF(Accelerator, "ComputeUnit: started\n");
-    }
+        doCompute();
+
     else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
     {
         DPRINTF(Accelerator, "MemPort: DMA resumed\n");
-    }
-}
-
-/** Initialize the accelerator */
-void Accelerator::initEvent()
-{
-    // Initialize any necessary resources or state
-    DPRINTF(Accelerator, "Initialization done\n");
-    doDmaRead();
-}
-
-void Accelerator::doDmaRead()
-{
-    DPRINTF(Accelerator, "DMA read started...\n");
-    cmd_reg |= CMD_DMA_READ;
-    energy_state = AccelEnergyState::STATE_IDLE;
-
-    dmaCtrl->startRead(
-        src_addr,
-        input_buffer,
-        count,
-        this
-    );
-}
-
-void Accelerator::doDmaWrite()
-{
-    DPRINTF(Accelerator, "DMA write started...\n");
-    cmd_reg |= CMD_DMA_WRITE;
-    energy_state = AccelEnergyState::STATE_IDLE;
-
-    dmaCtrl->startWrite(
-        dst_addr,
-        output_buffer,
-        count,
-        this
-    );
-}
-
-void Accelerator::doCompute()
-{
-    DPRINTF(Accelerator, "Compute started...\n");
-    cmd_reg |= CMD_COMPUTE;
-    energy_state = AccelEnergyState::STATE_ON;
-    computeUnit.start();
-}
-
-/** Write output buffer **/
-void Accelerator::writeOutputBuffer(uint8_t value)
-{
-    DPRINTF(Accelerator, "Accelerator: writing result 0x%x to output buffer\n", value);
-
-    for (uint32_t i = 0; i < count; i++)
-    {
-        output_buffer[i] = value;
     }
 }
 

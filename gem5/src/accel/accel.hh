@@ -2,21 +2,18 @@
 #define GEM5_ACCEL_HH
 
 #include "accel/dma_ctrl.hh"
-#include "dma_ctrl.hh"
+#include "accel/compute_unit.hh"
 #include "mem/se_translating_port_proxy.hh"
 #include "mem/mem_object.hh"
 #include "mem/packet.hh"
-#include "mem/packet_access.hh"
 #include "sim/eventq.hh"
 #include "params/Accelerator.hh"
 #include "cpu/base.hh"
 #include <cstdint>
-#include <stdint.h>
 #include <string>
-#include <sys/types.h>
 #include "base/types.hh"
 
-class Accelerator : public MemObject, public DmaCallBack
+class Accelerator : public MemObject, public DmaCallBack, public ComputeCallBack
 {
 
     private:
@@ -42,45 +39,7 @@ class Accelerator : public MemObject, public DmaCallBack
         AddrRangeList getAddrRanges() const override;
     };
 
-    class ComputeUnit
-    {
-      private:
-        Accelerator* owner;
-        bool busy;
-        Tick computeLatency;
-
-        Tick computeStartTick;
-        Tick remainingLatency;
-        bool paused;
-
-        class ComputeDoneEvent : public Event
-        {
-          private:
-            ComputeUnit* parent;
-          public:
-            ComputeDoneEvent(ComputeUnit* p)
-                : Event(Default_Pri, AutoDelete), parent(p) {}
-            void process() override { parent->finish(); }
-            const char* description() const override {
-                return "ComputeUnit::ComputeDoneEvent";
-            }
-        };
-
-        ComputeDoneEvent computeDoneEvent;
-
-      public:
-        ComputeUnit(Accelerator* _owner, Tick latency);
-
-        void start();
-        void compute();
-        void finish();
-        void abort();
-
-        bool isBusy() const { return busy; }
-    };
-
     CtrlPort ctrlPort;
-    ComputeUnit computeUnit;
     TickEvent tickEvent;
 
     void tick();
@@ -96,10 +55,8 @@ public:
 
     virtual void init() override;
 
-
     /** Gem5 port accessors */
     BaseSlavePort &getSlavePort(const std::string &if_name, PortID idx = InvalidPortID) override;
-    BaseMasterPort &getMasterPort(const std::string &if_name, PortID idx = InvalidPortID) override;
 
     /** Methods to handle packets **/
     Tick recvAtomic(PacketPtr pkt);
@@ -108,26 +65,26 @@ public:
     void recvRespRetry();
     AddrRange getAddrRanges() const;
 
-    /** DMA callback methods **/
-    void onDmaReadDone();
-    void onDmaWriteDone();
+    /** DMA Callback methods **/
+    void onDmaReadDone() override;
+    void onDmaWriteDone() override;
 
-    void onComputeDone();
-
-    /** Called by EnergyMgr (optional). Return 1 on handled. */
-    int handleMsg(const EnergyMsg &msg);
-
-    void triggerInterrupt();
-
-    void handleInterrupt();
-    void handleRecovery();
+    /** Compute Callback methods **/
+    void onComputeDone() override;
+    void onComputeAbort() override;
 
     /** Operation routines */
     void initEvent();
     void doDmaRead();
     void doDmaWrite();
     void doCompute();
-    void writeOutputBuffer(uint8_t val);
+    void abortCompute();
+
+    /** Called by EnergyMgr (optional). Return 1 on handled. */
+    void triggerInterrupt();
+    int handleMsg(const EnergyMsg &msg);
+    void handleInterrupt();
+    void handleRecovery();
 
     /** Energy state (simple enum) */
     enum AccelEnergyState {
@@ -148,7 +105,7 @@ protected:
     /** CPU / system references */
     BaseCPU* cpu;
     DmaCtrl* dmaCtrl;
-    SETranslatingPortProxy* portProxy;
+    ComputeUnit* computeUnit;
     AddrRange controlRange;
 
     /** I/O Buffers **/
@@ -171,8 +128,6 @@ protected:
     double energy_idle_per_tick;
 
     AccelEnergyState energy_state;
-
-    bool debug_io;
 
     /** Event scheduled when computation finishes */
     EventWrapper<Accelerator, &Accelerator::initEvent> event_init;

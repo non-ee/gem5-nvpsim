@@ -21,5 +21,3 @@ class Accelerator(MemObject):
     energy_idle_per_tick = Param.Float(
         0.5, "The power consumption of the accelerator when idle"
     )
-
-    debug_io = Param.Bool(False, "Enable debug output")

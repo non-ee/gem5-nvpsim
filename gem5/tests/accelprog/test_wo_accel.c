@@ -56,7 +56,7 @@ void heavy_task() {
 }
 
 void display_output() {
-    printf("Output: %d\n", dst_array[0]);
+    printf("Output: %d\n", dst_array[COUNT - 1]);
 }
 
 int main() {

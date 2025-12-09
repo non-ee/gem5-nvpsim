@@ -1,10 +1,17 @@
-#include "dma_ctrl.hh"
+#include "accel/dma_ctrl.hh"
+#include "accel/mem_if.hh"
+#include "mem/se_translating_port_proxy.hh"
+#include "cpu/thread_context.hh"
+#include "engy/state_machine.hh"
+#include "debug/EnergyMgmt.hh"
+#include "debug/DmaCtrl.hh"
 #include <cstdint>
 
 
-DmaCtrl::TickEvent::TickEvent(DmaCtrl *c) : ctrl(c) {}
+DmaCtrl::TickEvent::TickEvent(DmaCtrl *c)
+    : Event(Accelerator_Tick_Pri), ctrl(c) {}
 
-DmaCtrl::TickEvent::process() {
+void DmaCtrl::TickEvent::process() {
     assert(ctrl);
     ctrl->tick();
 }
@@ -20,13 +27,17 @@ void DmaCtrl::tick() {
     if (active)
         EngyConsume = energy_per_tx;
 
-    EnergyObject::consumeEnergy(ctrl->name(), EngyConsume);
+    char devname[100] = "DmaCtrl";
+    EnergyObject::consumeEnergy(devname, EngyConsume);
     DPRINTF(EnergyMgmt, "DmaCtrl consumed %f energy\n", EngyConsume);
     schedule(tickEvent, curTick() + latency);
 }
 
-void DmaCtrl::handleMsg(const EnergyMsg& msg) {
+int DmaCtrl::handleMsg(const EnergyMsg& msg) {
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF) {
+        if (!active) return 1;
+
+        DPRINTF(DmaCtrl, "Powering off DMA controller\n");
         active = false;
         if (readEvent.scheduled())
             deschedule(readEvent);
@@ -34,28 +45,47 @@ void DmaCtrl::handleMsg(const EnergyMsg& msg) {
             deschedule(writeEvent);
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON) {
-        active = false;
+        if (active) return 1;
+
+        DPRINTF(DmaCtrl, "Powering on DMA controller\n");
+        active = true;
         if (!readEvent.scheduled())
-            schedule(readEvent, clockEdge(Cycle(1)));
+            schedule(readEvent, clockEdge(Cycles(1)));
         if (!writeEvent.scheduled())
-            schedule(writeEvent, clockEdge(Cycle(1)));
+            schedule(writeEvent, clockEdge(Cycles(1)));
     }
+    else {
+        DPRINTF(EnergyMgmt, "Unrecognized MsgType!\n");
+        return 0;
+    }
+
+    return 1;
 }
 
 DmaCtrl::DmaCtrl(const DmaCtrlParams *p)
-    : SimObject(p),
+    : ClockedObject(p),
+      tickEvent(this),
+      cpu(p->cpu),
+      portProxy(nullptr),
       mem(nullptr),
       bandwidth(p->bandwidth),
       energy_per_tx(p->energy_per_tx),
-      readEvent(this, false, Accelerator_DMA_Pri),
-      writeEvent(this, false, Accelerator_DMA_Pri),
-      active(false)
+      active(false),
+      readEvent(this, false, Event::Accelerator_DMA_Pri),
+      writeEvent(this, false, Event::Accelerator_DMA_Pri),
+      debug_io(p->debug_io)
 {
-    readTask = {};
-    writeTask = {};
+    portProxy = new SETranslatingPortProxy(
+        cpu->getDataPort(),
+        cpu->getContext(0)->getProcessPtr(),
+        SETranslatingPortProxy::AllocType::Never
+    );
+    mem = new AccelMemInterface(portProxy);
 }
 
 DmaCtrl::~DmaCtrl() {
+    if (portProxy)
+        delete portProxy;
     if (mem)
         delete mem;
     if (tickEvent.scheduled())
@@ -63,30 +93,47 @@ DmaCtrl::~DmaCtrl() {
 }
 
 void DmaCtrl::init() {
+    DPRINTF(DmaCtrl, "Initializing DmaCtrl\n");
+
+    if (portProxy) {
+        DPRINTF(DmaCtrl, "Port proxy created successfully\n");
+    } else {
+        panic("DmaCtrl::init(): failed to create port proxy\n");
+    }
+
+    if (mem) {
+        DPRINTF(DmaCtrl, "Memory interface created successfully\n");
+    } else {
+        panic("DmaCtrl::init(): failed to create memory interface\n");
+    }
+
     if (!tickEvent.scheduled())
-        schedule(tickEvent, clockEdge(Cycle(0)));
+        schedule(tickEvent, clockEdge(Cycles(0)));
 }
 
-void DmaCtrl::setMemoryInterface(MemoryInterface* m) {
-    mem = m;
-}
-
-void DmaCtrl::startRead(Addr addr, uint8_t* buf, size_t size, DmaCallback* cb)
+void DmaCtrl::startRead(Addr addr, uint8_t* buf, size_t size, DmaCallBack* cb)
 {
+    DPRINTF(DmaCtrl, "Starting read from address %lx\n", addr);
+
     active = true;
-    readTask = {addr, buf, size, cb};
-    schedule(readEvent, clockEdge(Cycle(1)));
+    readTask = DmaTask(addr, buf, size, cb);
+    schedule(readEvent, clockEdge(Cycles(1)));
 }
 
-void DmaCtrl::startWrite(Addr addr, const uint8_t* buf, size_t size, DmaCallback* cb)
+void DmaCtrl::startWrite(Addr addr, uint8_t* buf, size_t size, DmaCallBack* cb)
 {
+    DPRINTF(DmaCtrl, "Starting read from address %lx\n", addr);
     active = true;
-    writeTask = {addr, buf, size, cb};
-    schedule(writeEvent, clockEdge(Cycle(1)));
+    writeTask = DmaTask(addr, buf, size, cb);
+    schedule(writeEvent, clockEdge(Cycles(1)));
 }
 
 void DmaCtrl::doRead() {
     auto &t = readTask;
+
+    if (!mem) {
+        panic("DmaCtrl::doRead(): memory interface not set (mem == nullptr)\n");
+    }
 
     if (t.sizeLeft == 0) {
         if (t.cb) {
@@ -103,11 +150,19 @@ void DmaCtrl::doRead() {
     t.buf += chunk;
     t.sizeLeft -= chunk;
 
-    schedule(readEvent, clockEdge(Cycle(1)));
+    if (debug_io) {
+        DPRINTF(DmaCtrl, "Read %lu bytes from address %lx\n", chunk, t.addr);
+    }
+
+    schedule(readEvent, clockEdge(Cycles(1)));
 }
 
 void DmaCtrl::doWrite() {
     auto &t = writeTask;
+
+    if (!mem) {
+        panic("DmaCtrl::doWrite(): memory interface not set (mem == nullptr)\n");
+    }
 
     if (t.sizeLeft == 0) {
         if (t.cb) {
@@ -124,10 +179,10 @@ void DmaCtrl::doWrite() {
     t.buf += chunk;
     t.sizeLeft -= chunk;
 
-    schedule(writeEvent, clockEdge(Cycle(1)));
+    schedule(writeEvent, clockEdge(Cycles(1)));
 }
 
-DmaCtrl* DmaCtrl::create(const DmaCtrlParams &p)
+DmaCtrl* DmaCtrlParams::create()
 {
-    return new DmaCtrl(p);
+    return new DmaCtrl(this);
 }
