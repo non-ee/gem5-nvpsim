@@ -140,13 +140,13 @@ int DmaCtrl::handleMsg(const EnergyMsg& msg) {
         if (!active()) return 1;
 
         DPRINTF(DmaCtrl, "Powering off ...\n");
-        // backupDma();
+        backupDma();
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON) {
         if (active()) return 1;
 
         DPRINTF(DmaCtrl, "Powering on ...\n");
-        // restoreDma();
+        restoreDma();
     }
     else {
         DPRINTF(EnergyMgmt, "Unrecognized MsgType!\n");

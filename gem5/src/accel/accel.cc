@@ -93,7 +93,7 @@ Accelerator::Accelerator(const Params *p) :
     controlRange(p->controlRange),
 
     delay_init(p->delay_init),
-    delay_compute_per_count(p->delay_compute_per_count),
+    delay_compute(p->delay_compute),
     delay_cpu_interrupt(p->delay_cpu_interrupt),
 
     energy_state(AccelEnergyState::STATE_OFF),
@@ -111,6 +111,7 @@ Accelerator::Accelerator(const Params *p) :
     cmd_reg = 0;
 
     busy = false;
+    need_recover = false;
 
     input_buffer = nullptr;
     output_buffer = nullptr;
@@ -195,13 +196,12 @@ void Accelerator::onComputeAbort()
 void Accelerator::initEvent()
 {
     /* Initialize any necessary resources or state */
-    busy = false;
     input_buffer = new uint8_t[count];
     output_buffer = new uint8_t[count];
 
     DPRINTF(Accelerator, "Initialization done\n");
 
-    cmd_reg &= ~CMD_START;
+    cmd_reg &= ~CMD_INIT;
     cmd_reg |= CMD_DMA_READ;
 }
 
@@ -209,7 +209,7 @@ void Accelerator::doInit()
 {
     DPRINTF(Accelerator, "Scheduling initialization event\n");
     energy_state = STATE_ON;
-    schedule(initEvent, curTick() + delay_init);
+    schedule(event_init, curTick() + delay_init);
 }
 
 void Accelerator::doDmaRead()
@@ -267,7 +267,6 @@ void Accelerator::abortCompute()
     DPRINTF(Accelerator, "Compute aborted...\n");
     computeUnit->abort();
 
-    cmd_reg &= ~CMD_COMPUTE;
     energy_state = AccelEnergyState::STATE_OFF;
 }
 
@@ -288,7 +287,11 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
             { // START bit
                 if (!busy)
                 {
-                    DPRINTF(Accelerator, "CMD_START received: scheduling initialization\n");
+                    DPRINTF(Accelerator, "CMD_INIT received: scheduling initialization\n");
+                    busy = true;
+                    cmd_reg &= ~CMD_START;
+                    cmd_reg |= CMD_INIT;
+                    DPRINTF(Accelerator, "busy = %x cmd_reg = %x\n", busy, cmd_reg);
                 }
                 else
                 {
@@ -360,44 +363,48 @@ AddrRange Accelerator::getAddrRanges() const
 /** handle energy manager messages (optional) **/
 int Accelerator::handleMsg(const EnergyMsg &msg)
 {
+    DPRINTF(Accelerator, "busy = %x cmd_reg = %x\n", busy, cmd_reg);
     if (!busy)
         return 1;
 
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
     {
-        if (energy_state == AccelEnergyState::STATE_OFF) return 1;
+        // if (energy_state == AccelEnergyState::STATE_OFF) return 1;
 
+        need_recover = true;
         DPRINTF(Accelerator, "Powering off ...\n");
         energy_state = AccelEnergyState::STATE_OFF;
         handleInterrupt();
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
-        if (energy_state == AccelEnergyState::STATE_ON) {
-            // Progress execution
-            if (cmd_reg & CMD_START)
-                doInit();
-            else if (cmd_reg & CMD_DMA_READ)
-                doDmaRead();
-            else if (cmd_reg & CMD_DMA_WRITE)
-                doDmaWrite();
-            else if (cmd_reg & CMD_COMPUTE)
-                doCompute();
-            else if (cmd_reg & CMD_CPU_INTERRUPT)
-                triggerInterrupt();
-            else if (cmd_reg & CMD_DONE)
-                finishSuccess();
-        }
-
-        else {
-            DPRINTF(Accelerator, "Powering on ...\n");
-            energy_state = STATE_ON;
+        DPRINTF(Accelerator, "cmd_reg = %b\n", cmd_reg);
+        if (need_recover) {
             handleRecovery();
+            need_recover = false;
+            return 1;
         }
+        // if (energy_state == STATE_OFF) {
+        //     DPRINTF(Accelerator, "Powering on ...\n");
+        //     handleRecovery();
+        //     return 1;
+        // }
 
+        // Progress execution
+        if (cmd_reg & CMD_INIT)
+            doInit();
+        else if (cmd_reg & CMD_DMA_READ)
+            doDmaRead();
+        else if (cmd_reg & CMD_DMA_WRITE)
+            doDmaWrite();
+        else if (cmd_reg & CMD_COMPUTE)
+            doCompute();
+        else if (cmd_reg & CMD_CPU_INTERRUPT)
+            triggerInterrupt();
+        else if (cmd_reg & CMD_DONE)
+            finishSuccess();
     }
-    else
-    {
+    else {
         DPRINTF(EnergyMgmt, "Unknown message type received!\n");
         return 0;
     }
@@ -407,39 +414,39 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 
 void Accelerator::handleInterrupt()
 {
-    if (cmd_reg & CMD_START) {
+    DPRINTF(Accelerator, "Accelerator: handles interrupt\n");
+    if (cmd_reg & CMD_INIT) {
         if (event_init.scheduled())
-            event_init.deschedule();
-
-    else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
-        dmaCtrl->pauseDma();
-
+            deschedule(event_init);
+    }
     else if (cmd_reg & CMD_COMPUTE)
         abortCompute();
-
-    else if (cmd_reg & CMD_CPU_INTERRUPT)
-        triggerInterrupt();
-
 }
 
 void Accelerator::handleRecovery()
 {
-    if (cmd_reg & CMD_COMPUTE)
+    DPRINTF(Accelerator, "Accelerator: handles recovery\n");
+    if (cmd_reg & CMD_INIT)
+        doInit();
+    else if (cmd_reg & CMD_COMPUTE)
         doCompute();
-
-    else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
-    {
-        DPRINTF(Accelerator, "DMA resumed\n");
-    }
 }
 
 /** triggerInterrupt: stub to notify CPU - adjust to your system's API */
 void Accelerator::triggerInterrupt()
 {
     DPRINTF(Accelerator, "Accelerator: triggers an interrupt to CPU\n");
-    busy = false;
     energy_state = STATE_IDLE;
     cpu->accelInterrupt(delay_cpu_interrupt);
+}
+
+void Accelerator::finishSuccess()
+{
+    DPRINTF(Accelerator, "Finished successfully\n");
+    cmd_reg &= ~CMD_CPU_INTERRUPT;
+    cmd_reg |= CMD_DONE;
+    busy = false;
+    energy_state = STATE_OFF;
 }
 
 Accelerator *AcceleratorParams::create() {

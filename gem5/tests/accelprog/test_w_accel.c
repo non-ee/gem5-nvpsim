@@ -3,13 +3,10 @@
 #include "peripheral.h"
 #include <stdint.h>
 
-#define COUNT 50
+#define COUNT 10
 
 volatile uint8_t src_array[COUNT];
 volatile uint8_t dst_array[COUNT];
-
-// uint8_t *src_array;
-// uint8_t *dst_array;
 
 void sensing_task() {
     // Implement sensing task here

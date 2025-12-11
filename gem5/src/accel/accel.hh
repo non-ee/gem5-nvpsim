@@ -82,17 +82,16 @@ public:
     /** Called by EnergyMgr (optional). Return 1 on handled. */
     int handleMsg(const EnergyMsg &msg);
 
-    void handleInterrupt();
-    void handleRecovery();
 
     /* cmd_reg bit */
     static const uint8_t CMD_START = (1 << 0);
-    static const uint8_t CMD_ABORT = (1 << 1);
-    static const uint8_t CMD_DMA_READ = (1 << 2);
-    static const uint8_t CMD_DMA_WRITE = (1 << 3);
-    static const uint8_t CMD_COMPUTE = (1 << 4);
-    static const uint8_t CMD_CPU_INTERRUPT = (1 << 5);
-    static const uint8_t CMD_DONE = (1 << 6);
+    static const uint8_t CMD_INIT = (1 << 1);
+    static const uint8_t CMD_ABORT = (1 << 2);
+    static const uint8_t CMD_DMA_READ = (1 << 3);
+    static const uint8_t CMD_DMA_WRITE = (1 << 4);
+    static const uint8_t CMD_COMPUTE = (1 << 5);
+    static const uint8_t CMD_CPU_INTERRUPT = (1 << 6);
+    static const uint8_t CMD_DONE = (1 << 7);
 
 protected:
     /** CPU / system references */
@@ -111,10 +110,11 @@ protected:
     uint32_t count;     // number of elements
     uint8_t cmd_reg;   // register to interact with cpu
     bool busy;
+    bool need_recover;
 
     /** Status */
     Tick delay_init;
-    Tick delay_compute_per_count;
+    Tick delay_compute;
     Tick delay_cpu_interrupt;
 
     double energy_per_cycle[3] = {0.0, 0.2, 2.0};
@@ -130,6 +130,9 @@ protected:
     void triggerInterrupt();
     void finishSuccess();
     void abortCompute();
+
+    void handleInterrupt();
+    void handleRecovery();
 
     /** Event scheduled when computation finishes */
     EventWrapper<Accelerator, &Accelerator::initEvent> event_init;

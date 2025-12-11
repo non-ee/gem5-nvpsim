@@ -12,11 +12,13 @@
 #define ACCEL_COUNT_REG 0x18
 
 #define ACCEL_CMD_START (1 << 0)
-#define ACCEL_CMD_ABORT (1 << 1)
-#define ACCEL_CMD_DMA_READ (1 << 2)
-#define ACCEL_CMD_DMA_WRITE (1 << 3)
-#define ACCEL_CMD_COMPUTE (1 << 4)
-#define ACCEL_CMD_DONE (1 << 5)
+#define ACCEL_CMD_INIT (1 << 1)
+#define ACCEL_CMD_ABORT (1 << 2)
+#define ACCEL_CMD_DMA_READ (1 << 3)
+#define ACCEL_CMD_DMA_WRITE (1 << 4)
+#define ACCEL_CMD_COMPUTE (1 << 5)
+#define ACCEL_CMD_CPU_INTERRUPT (1 << 6)
+#define ACCEL_CMD_DONE (1 << 7)
 
 #define SRC_PA 0x90000000
 #define DST_PA 0x90001000
