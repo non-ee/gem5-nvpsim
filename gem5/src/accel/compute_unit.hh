@@ -4,8 +4,6 @@
 #include "base/types.hh"
 #include <cstdint>
 
-using namespace std;
-
 struct ComputeCallBack {
     virtual void onComputeDone() = 0;
     virtual void onComputeAbort() {};
@@ -36,7 +34,7 @@ class ComputeUnit : public EventManager {
               event_compute(this, false, Event::Accelerator_Compute_Done_Pri)
             {}
 
-        const string name() const {
+        const std::string name() const {
             return "ComputeUnit";
         }
 

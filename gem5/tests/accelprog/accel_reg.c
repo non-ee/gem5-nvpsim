@@ -8,6 +8,7 @@ uint8_t *accel = NULL;
 uint8_t *cmd_reg = NULL;
 uint64_t *src_reg = NULL;
 uint64_t *dst_reg = NULL;
+uint32_t *count_reg = NULL;
 
 void accel_map_registers() {
     accel = mmap(
@@ -27,6 +28,7 @@ void accel_map_registers() {
     cmd_reg = accel + ACCEL_CMD_REG;
     src_reg = (uint64_t*)(accel + ACCEL_SRC_REG);
     dst_reg = (uint64_t*)(accel + ACCEL_DST_REG);
+    count_reg = (uint32_t*)(accel + ACCEL_COUNT_REG);
 }
 
 void accel_unmap_registers() {
@@ -41,9 +43,10 @@ void accel_unmap_registers() {
     dst_reg = NULL;
 }
 
-void accel_set_addr(uint64_t src_addr, uint64_t dst_addr) {
+void accel_set_addr(uint64_t src_addr, uint64_t dst_addr, uint32_t count) {
     *src_reg = src_addr;
     *dst_reg = dst_addr;
+    *count_reg = count;
 }
 
 void accel_start() {

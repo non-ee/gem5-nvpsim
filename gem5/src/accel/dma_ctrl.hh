@@ -5,6 +5,13 @@
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "params/DmaCtrl.hh"
+#include <functional>
+
+enum DmaCtrlOp {
+    OFF = 0,
+    READ = 1,
+    WRITE = 2
+};
 
 struct DmaCallBack {
     virtual void onDmaReadDone() = 0;
@@ -16,11 +23,14 @@ struct DmaTask {
     Addr addr;
     uint8_t* buf;
     size_t sizeLeft;
-    DmaCallBack* cb;
+    std::function<void()> cb;
 
-    DmaTask() : addr(0), buf(nullptr), sizeLeft(0), cb(nullptr) {}
-    DmaTask(Addr a, uint8_t* b, size_t s, DmaCallBack* c)
-        : addr(a), buf(b), sizeLeft(s), cb(c) {}
+    DmaCtrlOp op = OFF;
+
+    DmaTask()
+        : addr(0), buf(nullptr), sizeLeft(0), cb(nullptr), op(OFF) {}
+    DmaTask(Addr a, uint8_t* b, size_t s, std::function<void()> c, DmaCtrlOp o = OFF)
+        : addr(a), buf(b), sizeLeft(s), cb(c), op(o) {}
 };
 
 class DmaCtrl : public ClockedObject
@@ -48,30 +58,32 @@ class DmaCtrl : public ClockedObject
         virtual int handleMsg(const EnergyMsg& msg);
 
         // Simple async read/write
-        void startRead(Addr addr, uint8_t* buf, size_t size, DmaCallBack* cb);
+        void startRead(Addr addr, uint8_t* buf, size_t size, std::function<void()> cb);
+        void startWrite(Addr addr, uint8_t* buf, size_t size, std::function<void()> cb);
 
-        void startWrite(Addr addr, uint8_t* buf, size_t size, DmaCallBack* cb);
-
-        void doRead();
-        void doWrite();
+        bool active() const {
+            return dmaTask.op == READ || dmaTask.op == WRITE;
+        }
 
     private:
         BaseCPU *cpu;
         PortProxy* portProxy;
         MemoryInterface* mem;
         size_t bandwidth;
-        double energy_per_tx;
 
-        bool active;
+        bool inTask;
 
-        // current task
-        DmaTask readTask;
-        DmaTask writeTask;
+        /** Energy modes of DmaCtrl : [OFF, READ, WRITE]; **/
+        double energy_per_tx[3] = {0.0, 0.2, 1.0};
+
+        // Tasks
+        DmaTask dmaTask;
+        DmaTask backupTask;
+
+        void doDma();
+        void backupDma();
+        void restoreDma();
 
         // events
-        EventWrapper<DmaCtrl, &DmaCtrl::doRead> readEvent;
-        EventWrapper<DmaCtrl, &DmaCtrl::doWrite> writeEvent;
-
-        // debug
-        bool debug_io;
+        EventWrapper<DmaCtrl, &DmaCtrl::doDma> dmaEvent;
 };

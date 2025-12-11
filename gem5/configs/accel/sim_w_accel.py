@@ -32,7 +32,7 @@ system.mem_ranges = [
 ###################################
 
 # Power Supply (file path and sample period)
-energy_path = 'profile/solar_new_100000.txt'
+energy_path = 'profile/solar_new_60000.txt'
 system.energy_mgmt = EnergyMgmt(path_energy_profile = energy_path, energy_time_unit = '10us')
 # Energy Management Strategy: State Machine
 system.energy_mgmt.state_machine = SimpleEnergySM()
@@ -116,9 +116,10 @@ system.vdev0.need_log = 1
 system.dma_ctrl = DmaCtrl()
 system.dma_ctrl.cpu = system.cpu
 system.dma_ctrl.s_energy_port = system.energy_mgmt.m_energy_port
-system.dma_ctrl.bandwidth = 8
-system.dma_ctrl.energy_per_tx = Float(1.0)
-system.dma_ctrl.debug_io = True
+system.dma_ctrl.bandwidth = 10
+
+# Energy for [OFF, READ, WRITE]
+system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(1.0)]
 
 ###################################
 ###########  Accelerator  ############
@@ -134,16 +135,14 @@ system.accel.s_energy_port = system.energy_mgmt.m_energy_port
 system.accel.ctrlPort = system.membus.master
 system.accel.dmaCtrl = system.dma_ctrl
 
-system.accel_range = AddrRange('514MB', '516MB')
-system.accel_vaddr = Addr('0x40000000')
+system.accel_range = AddrRange(0x40000000, '2MB')
+# system.accel_vaddr = Addr('0x40000000')
 system.accel.controlRange = system.accel_range
 
-system.accel.count = count
 system.accel.delay_init = '100us'
-system.accel.delay_compute = '%dt' % total_tick
+system.accel.delay_compute_per_count = '%dt' % total_tick
 system.accel.delay_cpu_interrupt = '100us'
-system.accel.energy_idle_per_tick = Float(0.4)
-system.accel.energy_compute_per_tick = Float(5.0)
+system.accel.energy_per_cycle = [Float(0.0), Float(0.5), Float(5.0)]
 
 ###################################
 ###########  Benchmark  ############

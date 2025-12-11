@@ -13,6 +13,13 @@
 #include <string>
 #include "base/types.hh"
 
+/** Energy state (simple enum) */
+enum AccelEnergyState {
+    STATE_OFF = 0,
+    STATE_IDLE = 1,
+    STATE_ON = 2
+};
+
 class Accelerator : public MemObject, public DmaCallBack, public ComputeCallBack
 {
 
@@ -68,30 +75,16 @@ public:
     /** DMA Callback methods **/
     void onDmaReadDone() override;
     void onDmaWriteDone() override;
-
     /** Compute Callback methods **/
     void onComputeDone() override;
     void onComputeAbort() override;
 
-    /** Operation routines */
-    void initEvent();
-    void doDmaRead();
-    void doDmaWrite();
-    void doCompute();
-    void abortCompute();
-
     /** Called by EnergyMgr (optional). Return 1 on handled. */
     void triggerInterrupt();
     int handleMsg(const EnergyMsg &msg);
+
     void handleInterrupt();
     void handleRecovery();
-
-    /** Energy state (simple enum) */
-    enum AccelEnergyState {
-        STATE_OFF = 0,
-        STATE_IDLE = 2,
-        STATE_ON = 4
-    };
 
     /* cmd_reg bit */
     static const uint8_t CMD_START = (1 << 0);
@@ -115,19 +108,24 @@ protected:
     /** Control registers (MMIO) */
     Addr src_addr;      // source buffer in system memory
     Addr dst_addr;      // destination buffer in system memory
+    uint32_t count;     // number of elements
     uint8_t cmd_reg;   // register to interact with cpu
     bool busy;
 
     /** Status */
-    uint32_t count;     // number of elements / bytes
     Tick delay_init;
     Tick delay_compute;
     Tick delay_cpu_interrupt;
 
-    double energy_compute_per_tick;
-    double energy_idle_per_tick;
-
+    double energy_per_cycle[3] = {0.0, 0.2, 2.0};
     AccelEnergyState energy_state;
+
+    /** Operation routines */
+    void initEvent();
+    void doDmaRead();
+    void doDmaWrite();
+    void doCompute();
+    void abortCompute();
 
     /** Event scheduled when computation finishes */
     EventWrapper<Accelerator, &Accelerator::initEvent> event_init;

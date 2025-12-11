@@ -17,7 +17,4 @@ class Accelerator(MemObject):
     delay_init = Param.Clock("2ms", "The tick delay for initialization")
     delay_compute = Param.Clock("10ms", "The tick delay for computation")
     delay_cpu_interrupt = Param.Clock("1ms", "The tick delay for cpu interrupt")
-    energy_compute_per_tick = Param.Float(5, "The power consumption of the accelerator")
-    energy_idle_per_tick = Param.Float(
-        0.5, "The power consumption of the accelerator when idle"
-    )
+    energy_per_cycle = VectorParam.Float([], "The power consumption of the accelerator")

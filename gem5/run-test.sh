@@ -11,9 +11,12 @@ count=50
 perf_boost=5
 cap=10
 energy=6
-prog=test_w_accel
-# prog=test_wo_accel
-# prog=accel_test
+
+arg_prog=w_accel
+# arg_prog=wo_accel
+
+prog="test_${arg_prog}"
+script="configs/accel/sim_${arg_prog}.py"
 
 sed -i "s/#define COUNT .*/#define COUNT ${count}/" tests/accelprog/${prog}.c
 make ${prog} -C tests/accelprog/
@@ -22,5 +25,5 @@ FLAG=--debug-flag=Accelerator,DmaCtrl
 
 echo "========================================================="
 echo "cap: $cap; energy: $energy"
-build/ARM/gem5.debug $FLAG configs/accel/sim.py $cap $energy $prog $count $perf_boost
+build/ARM/gem5.debug $FLAG $script $cap $energy $prog $count $perf_boost
 # build/ARM/gem5.debug --debug-flag=VirtualDevice --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2

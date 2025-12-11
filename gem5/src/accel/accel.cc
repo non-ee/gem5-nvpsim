@@ -32,21 +32,7 @@ void Accelerator::tick()
 {
     Tick latency = clockPeriod();
     double EngyConsume = 0;
-
-    switch (energy_state)
-    {
-    case AccelEnergyState::STATE_OFF:
-        EngyConsume = 0;
-        break;
-    case AccelEnergyState::STATE_IDLE:
-        EngyConsume = energy_idle_per_tick * ticksToCycles(latency);
-        break;
-    case AccelEnergyState::STATE_ON:
-        EngyConsume = energy_compute_per_tick * ticksToCycles(latency);
-        break;
-    default:
-        panic("Invalid energy state");
-    }
+    EngyConsume = energy_per_cycle[energy_state] * ticksToCycles(latency);
 
     char dev_name[100] = "Accelerator";
     EnergyObject::consumeEnergy(dev_name, EngyConsume);
@@ -105,27 +91,28 @@ Accelerator::Accelerator(const Params *p) :
     dmaCtrl(p->dmaCtrl),
     controlRange(p->controlRange),
 
-    count(p->count),
     delay_init(p->delay_init),
     delay_compute(p->delay_compute),
     delay_cpu_interrupt(p->delay_cpu_interrupt),
 
-    energy_compute_per_tick(p->energy_compute_per_tick),
-    energy_idle_per_tick(p->energy_idle_per_tick),
     energy_state(AccelEnergyState::STATE_OFF),
     event_init(this, false, Event::Accelerator_Interrupt)
 {
     /* configure compute unit */
     computeUnit = new ComputeUnit(getEventQueue(0), delay_compute);
 
+    energy_per_cycle[0] = p->energy_per_cycle[0];
+    energy_per_cycle[1] = p->energy_per_cycle[1];
+    energy_per_cycle[2] = p->energy_per_cycle[2];
+
     src_addr = 0;
     dst_addr = 0;
     cmd_reg = 0;
+
     busy = false;
 
-    /* configure buffers */
-    input_buffer = new uint8_t[count];
-    output_buffer = new uint8_t[count];
+    input_buffer = nullptr;
+    output_buffer = nullptr;
 }
 
 Accelerator::~Accelerator()
@@ -208,8 +195,12 @@ void Accelerator::onComputeAbort()
 /** Initialize the accelerator */
 void Accelerator::initEvent()
 {
-    // Initialize any necessary resources or state
     DPRINTF(Accelerator, "Initialization done\n");
+    /* Initialize any necessary resources or state */
+    busy = false;
+    input_buffer = new uint8_t[count];
+    output_buffer = new uint8_t[count];
+
     doDmaRead();
 }
 
@@ -227,7 +218,9 @@ void Accelerator::doDmaRead()
         src_addr,
         input_buffer,
         count,
-        this
+        [this]() {
+            onDmaReadDone();
+        }
     );
 }
 
@@ -245,7 +238,9 @@ void Accelerator::doDmaWrite()
         dst_addr,
         output_buffer,
         count,
-        this
+        [this]() {
+            onDmaWriteDone();
+        }
     );
 }
 
@@ -265,9 +260,10 @@ void Accelerator::doCompute()
 void Accelerator::abortCompute()
 {
     DPRINTF(Accelerator, "Compute aborted...\n");
+    computeUnit->abort();
+
     cmd_reg &= ~CMD_COMPUTE;
     energy_state = AccelEnergyState::STATE_OFF;
-    computeUnit->abort();
 }
 
 /** Receive atomic request **/
@@ -279,7 +275,6 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
     // assume 32-bit aligned register accesses
     if (pkt->isWrite())
     {
-        // printf("Accelerator: received atomic write from address %lx at offset %lx\n", pkt->getAddr(), offset);
         switch (offset)
         {
         case 0x00: // CMD
@@ -288,7 +283,6 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
             { // START bit
                 if (!busy)
                 {
-                    busy = true;
                     DPRINTF(Accelerator, "CMD_START received: scheduling initialization\n");
                     schedule(event_init, curTick() + delay_init);
                 }
@@ -307,6 +301,10 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
             dst_addr = *(pkt->getConstPtr<Addr>());
             break;
 
+        case 0x18: // COUNT
+            count = *(pkt->getConstPtr<uint32_t>());
+            break;
+
         default:
             DPRINTF(Accelerator, "%s: Unknown write offset %#x val %#x\n", name(), offset);
             break;
@@ -321,9 +319,10 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
             ret = cmd_reg;
             break;
 
-        case 0x14: // STATUS
+        case 0x20:
             ret = busy ? 1 : 0;
             break;
+
         default:
             ret = 0;
             break;
@@ -357,12 +356,15 @@ AddrRange Accelerator::getAddrRanges() const
 /** handle energy manager messages (optional) **/
 int Accelerator::handleMsg(const EnergyMsg &msg)
 {
+    if (!busy)
+        return 1;
+
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
     {
         if (energy_state == AccelEnergyState::STATE_OFF)
             return 1;
 
-        DPRINTF(Accelerator, "Powering off accelerator\n");
+        DPRINTF(Accelerator, "Powering off ...\n");
         energy_state = AccelEnergyState::STATE_OFF;
         handleInterrupt();
     }
@@ -371,7 +373,7 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
         if (energy_state == AccelEnergyState::STATE_ON)
             return 1;
 
-        DPRINTF(Accelerator, "Powering on accelerator\n");
+        DPRINTF(Accelerator, "Powering on ...\n");
         energy_state = AccelEnergyState::STATE_ON;
         handleRecovery();
     }
@@ -391,7 +393,7 @@ void Accelerator::handleInterrupt()
 
     else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
     {
-        DPRINTF(Accelerator, "MemPort: DMA paused\n");
+        DPRINTF(Accelerator, "DMA paused\n");
     }
 }
 
@@ -402,7 +404,7 @@ void Accelerator::handleRecovery()
 
     else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
     {
-        DPRINTF(Accelerator, "MemPort: DMA resumed\n");
+        DPRINTF(Accelerator, "DMA resumed\n");
     }
 }
 
@@ -411,6 +413,7 @@ void Accelerator::triggerInterrupt()
 {
     DPRINTF(Accelerator, "Accelerator: triggers an interrupt to CPU\n");
 
+    busy = false;
     cmd_reg |= CMD_DONE;
     energy_state = AccelEnergyState::STATE_OFF;
 

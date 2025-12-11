@@ -9,6 +9,7 @@
 #define ACCEL_CMD_REG 0x00
 #define ACCEL_SRC_REG 0x08
 #define ACCEL_DST_REG 0x10
+#define ACCEL_COUNT_REG 0x18
 
 #define ACCEL_CMD_START (1 << 0)
 #define ACCEL_CMD_ABORT (1 << 1)
@@ -29,7 +30,7 @@ extern uint64_t *dst_reg;
 void accel_map_registers();
 void accel_unmap_registers();
 
-void accel_set_addr(uint64_t src_addr, uint64_t dst_addr);
+void accel_set_addr(uint64_t src_addr, uint64_t dst_addr, uint32_t count);
 void accel_start();
 
 #endif

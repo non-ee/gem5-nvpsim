@@ -40,7 +40,7 @@ void heavy_task() {
         src_array[i] -= 20;  // assume temp baseline = 20°C
 
     // Phase 2: heavy loop
-    accel_set_addr((uint64_t)src_array, (uint64_t)dst_array);
+    accel_set_addr((uint64_t)src_array, (uint64_t)dst_array, COUNT);
     accel_start();
 
     // Phase 3: reduce output
