@@ -101,7 +101,6 @@ System::System(Params *p)
       vdev_ranges(p->vdev_ranges),
       has_vdev(p->has_vdev),
       vaddr_vdev_ranges(p->vaddr_vdev_ranges),
-      accelVAddr(p->accel_vaddr),
       accelRange(p->accel_range)
 {
     // add self to global system list
@@ -543,6 +542,7 @@ System::allocVdevPages(Addr vaddr, int64_t& size)
 bool
 System::isAccelVAddr(Addr addr)
 {
+    Addr accelVAddr = accelRange.start();
     if (accelVAddr == 0)
         return false;
 

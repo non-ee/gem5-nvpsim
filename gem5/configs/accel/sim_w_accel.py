@@ -127,7 +127,7 @@ system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(1.0)]
 count = float(sys.argv[4])
 perf_boost = float(sys.argv[5])
 compute_tick_per_count = 1422050
-total_tick = count * compute_tick_per_count / perf_boost
+total_tick_per_count = compute_tick_per_count / perf_boost
 
 system.accel = Accelerator()
 system.accel.cpu = system.cpu
@@ -135,12 +135,11 @@ system.accel.s_energy_port = system.energy_mgmt.m_energy_port
 system.accel.ctrlPort = system.membus.master
 system.accel.dmaCtrl = system.dma_ctrl
 
-system.accel_range = AddrRange(0x40000000, '2MB')
-# system.accel_vaddr = Addr('0x40000000')
+system.accel_range = AddrRange(0x40000000, size='2MB')
 system.accel.controlRange = system.accel_range
 
 system.accel.delay_init = '100us'
-system.accel.delay_compute_per_count = '%dt' % total_tick
+system.accel.delay_compute_per_count = '%dt' % total_tick_per_count
 system.accel.delay_cpu_interrupt = '100us'
 system.accel.energy_per_cycle = [Float(0.0), Float(0.5), Float(5.0)]
 

@@ -575,7 +575,6 @@ class System : public MemObject
 
 
     // New: Accelerator virtual address mapping
-    Addr accelVAddr;
     AddrRange accelRange;
 
     bool isAccelVAddr(Addr adr);

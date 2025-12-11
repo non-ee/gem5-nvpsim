@@ -1,4 +1,5 @@
 #include "accel/accel.hh"
+#include "accel.hh"
 #include "debug/Accelerator.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/MemoryAccess.hh"
@@ -92,7 +93,7 @@ Accelerator::Accelerator(const Params *p) :
     controlRange(p->controlRange),
 
     delay_init(p->delay_init),
-    delay_compute(p->delay_compute),
+    delay_compute_per_count(p->delay_compute_per_count),
     delay_cpu_interrupt(p->delay_cpu_interrupt),
 
     energy_state(AccelEnergyState::STATE_OFF),
@@ -166,14 +167,13 @@ void Accelerator::onDmaReadDone()
 {
     // Handle DMA read completion
     cmd_reg &= ~CMD_DMA_READ;
-    doCompute();
 }
 
 void Accelerator::onDmaWriteDone()
 {
     // Handle DMA write completion
     cmd_reg &= ~CMD_DMA_WRITE;
-    triggerInterrupt();
+    cmd_reg |= CMD_CPU_INTERRUPT;
 }
 
 /* ComputeTask interfaces implementation */
@@ -181,8 +181,7 @@ void Accelerator::onComputeDone()
 {
     DPRINTF(Accelerator, "Compute done...\n");
     cmd_reg &= ~CMD_COMPUTE;
-    energy_state = AccelEnergyState::STATE_IDLE;
-    doDmaWrite();
+    cmd_reg |= CMD_DMA_WRITE;
 }
 
 void Accelerator::onComputeAbort()
@@ -195,20 +194,28 @@ void Accelerator::onComputeAbort()
 /** Initialize the accelerator */
 void Accelerator::initEvent()
 {
-    DPRINTF(Accelerator, "Initialization done\n");
     /* Initialize any necessary resources or state */
     busy = false;
     input_buffer = new uint8_t[count];
     output_buffer = new uint8_t[count];
 
-    doDmaRead();
+    DPRINTF(Accelerator, "Initialization done\n");
+
+    cmd_reg &= ~CMD_START;
+    cmd_reg |= CMD_DMA_READ;
+}
+
+void Accelerator::doInit()
+{
+    DPRINTF(Accelerator, "Scheduling initialization event\n");
+    energy_state = STATE_ON;
+    schedule(initEvent, curTick() + delay_init);
 }
 
 void Accelerator::doDmaRead()
 {
-    DPRINTF(Accelerator, "DMA read started...\n");
-    cmd_reg |= CMD_DMA_READ;
-    energy_state = AccelEnergyState::STATE_IDLE;
+    DPRINTF(Accelerator, "Scheduling DMA read ...\n");
+    energy_state = STATE_IDLE;
 
     if (!dmaCtrl) {
         panic("DMA controller not initialized");
@@ -226,9 +233,8 @@ void Accelerator::doDmaRead()
 
 void Accelerator::doDmaWrite()
 {
-    DPRINTF(Accelerator, "DMA write started...\n");
-    cmd_reg |= CMD_DMA_WRITE;
-    energy_state = AccelEnergyState::STATE_IDLE;
+    DPRINTF(Accelerator, "Scheduling DMA write ...\n");
+    energy_state = STATE_IDLE;
 
     if (!dmaCtrl) {
         panic("DMA controller not initialized");
@@ -247,8 +253,7 @@ void Accelerator::doDmaWrite()
 void Accelerator::doCompute()
 {
     DPRINTF(Accelerator, "Compute started...\n");
-    cmd_reg |= CMD_COMPUTE;
-    energy_state = AccelEnergyState::STATE_ON;
+    energy_state = STATE_ON;
     computeUnit->startCompute(
         input_buffer,
         output_buffer,
@@ -284,7 +289,6 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
                 if (!busy)
                 {
                     DPRINTF(Accelerator, "CMD_START received: scheduling initialization\n");
-                    schedule(event_init, curTick() + delay_init);
                 }
                 else
                 {
@@ -361,8 +365,7 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
     {
-        if (energy_state == AccelEnergyState::STATE_OFF)
-            return 1;
+        if (energy_state == AccelEnergyState::STATE_OFF) return 1;
 
         DPRINTF(Accelerator, "Powering off ...\n");
         energy_state = AccelEnergyState::STATE_OFF;
@@ -370,12 +373,28 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
-        if (energy_state == AccelEnergyState::STATE_ON)
-            return 1;
+        if (energy_state == AccelEnergyState::STATE_ON) {
+            // Progress execution
+            if (cmd_reg & CMD_START)
+                doInit();
+            else if (cmd_reg & CMD_DMA_READ)
+                doDmaRead();
+            else if (cmd_reg & CMD_DMA_WRITE)
+                doDmaWrite();
+            else if (cmd_reg & CMD_COMPUTE)
+                doCompute();
+            else if (cmd_reg & CMD_CPU_INTERRUPT)
+                triggerInterrupt();
+            else if (cmd_reg & CMD_DONE)
+                finishSuccess();
+        }
 
-        DPRINTF(Accelerator, "Powering on ...\n");
-        energy_state = AccelEnergyState::STATE_ON;
-        handleRecovery();
+        else {
+            DPRINTF(Accelerator, "Powering on ...\n");
+            energy_state = STATE_ON;
+            handleRecovery();
+        }
+
     }
     else
     {
@@ -388,13 +407,19 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 
 void Accelerator::handleInterrupt()
 {
-    if (cmd_reg & CMD_COMPUTE)
-        abortCompute();
+    if (cmd_reg & CMD_START) {
+        if (event_init.scheduled())
+            event_init.deschedule();
 
     else if (cmd_reg & CMD_DMA_READ || cmd_reg & CMD_DMA_WRITE)
-    {
-        DPRINTF(Accelerator, "DMA paused\n");
-    }
+        dmaCtrl->pauseDma();
+
+    else if (cmd_reg & CMD_COMPUTE)
+        abortCompute();
+
+    else if (cmd_reg & CMD_CPU_INTERRUPT)
+        triggerInterrupt();
+
 }
 
 void Accelerator::handleRecovery()
@@ -412,11 +437,8 @@ void Accelerator::handleRecovery()
 void Accelerator::triggerInterrupt()
 {
     DPRINTF(Accelerator, "Accelerator: triggers an interrupt to CPU\n");
-
     busy = false;
-    cmd_reg |= CMD_DONE;
-    energy_state = AccelEnergyState::STATE_OFF;
-
+    energy_state = STATE_IDLE;
     cpu->accelInterrupt(delay_cpu_interrupt);
 }
 

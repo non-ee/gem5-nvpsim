@@ -80,7 +80,6 @@ public:
     void onComputeAbort() override;
 
     /** Called by EnergyMgr (optional). Return 1 on handled. */
-    void triggerInterrupt();
     int handleMsg(const EnergyMsg &msg);
 
     void handleInterrupt();
@@ -92,7 +91,8 @@ public:
     static const uint8_t CMD_DMA_READ = (1 << 2);
     static const uint8_t CMD_DMA_WRITE = (1 << 3);
     static const uint8_t CMD_COMPUTE = (1 << 4);
-    static const uint8_t CMD_DONE = (1 << 5);
+    static const uint8_t CMD_CPU_INTERRUPT = (1 << 5);
+    static const uint8_t CMD_DONE = (1 << 6);
 
 protected:
     /** CPU / system references */
@@ -114,7 +114,7 @@ protected:
 
     /** Status */
     Tick delay_init;
-    Tick delay_compute;
+    Tick delay_compute_per_count;
     Tick delay_cpu_interrupt;
 
     double energy_per_cycle[3] = {0.0, 0.2, 2.0};
@@ -122,9 +122,13 @@ protected:
 
     /** Operation routines */
     void initEvent();
+
+    void doInit();
     void doDmaRead();
     void doDmaWrite();
     void doCompute();
+    void triggerInterrupt();
+    void finishSuccess();
     void abortCompute();
 
     /** Event scheduled when computation finishes */

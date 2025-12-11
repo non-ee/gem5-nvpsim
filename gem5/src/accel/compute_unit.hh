@@ -16,6 +16,8 @@ struct ComputeTask {
     uint32_t size;
     ComputeCallBack* cb;
 
+    virtual void compute() = 0;
+
     ComputeTask() : input(nullptr), output(nullptr), size(0), cb(nullptr) {}
     ComputeTask(uint8_t* input, uint8_t* output, uint32_t size, ComputeCallBack* cb)
         : input(input), output(output), size(size), cb(cb) {}
