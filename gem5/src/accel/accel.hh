@@ -20,10 +20,24 @@ enum AccelEnergyState {
     STATE_ON = 2
 };
 
+/** Accelerator state **/
+enum AccelState {
+    IDLE = 0,
+    START = 1,
+    INIT = 2,
+    DMA_READ = 3,
+    DMA_WRITE = 4,
+    COMPUTE = 5,
+    CPU_INT = 6,
+    DONE = 7
+};
+
 class Accelerator : public MemObject, public DmaCallBack, public ComputeCallBack
 {
 
     private:
+    char accel_name[100];
+
     /* TickEvent for handling periodic energy consumption */
     struct TickEvent : public Event {
         Accelerator *owner;
@@ -50,6 +64,7 @@ class Accelerator : public MemObject, public DmaCallBack, public ComputeCallBack
     TickEvent tickEvent;
 
     void tick();
+    void fsmStep();
 
 public:
     typedef AcceleratorParams Params;
@@ -82,17 +97,6 @@ public:
     /** Called by EnergyMgr (optional). Return 1 on handled. */
     int handleMsg(const EnergyMsg &msg);
 
-
-    /* cmd_reg bit */
-    static const uint8_t CMD_START = (1 << 0);
-    static const uint8_t CMD_INIT = (1 << 1);
-    static const uint8_t CMD_ABORT = (1 << 2);
-    static const uint8_t CMD_DMA_READ = (1 << 3);
-    static const uint8_t CMD_DMA_WRITE = (1 << 4);
-    static const uint8_t CMD_COMPUTE = (1 << 5);
-    static const uint8_t CMD_CPU_INTERRUPT = (1 << 6);
-    static const uint8_t CMD_DONE = (1 << 7);
-
 protected:
     /** CPU / system references */
     BaseCPU* cpu;
@@ -108,9 +112,8 @@ protected:
     Addr src_addr;      // source buffer in system memory
     Addr dst_addr;      // destination buffer in system memory
     uint32_t count;     // number of elements
-    uint8_t cmd_reg;   // register to interact with cpu
+    AccelState state;
     bool busy;
-    bool need_recover;
 
     /** Status */
     Tick delay_init;
@@ -121,7 +124,7 @@ protected:
     AccelEnergyState energy_state;
 
     /** Operation routines */
-    void initEvent();
+    void initDone();
 
     void doInit();
     void doDmaRead();
@@ -135,7 +138,7 @@ protected:
     void handleRecovery();
 
     /** Event scheduled when computation finishes */
-    EventWrapper<Accelerator, &Accelerator::initEvent> event_init;
+    EventWrapper<Accelerator, &Accelerator::initDone> event_init;
 };
 
 #endif // GEM5_ACCEL_HH

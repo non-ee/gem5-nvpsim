@@ -57,6 +57,8 @@ class ComputeUnit : public EventManager {
         void abort() {
             if (event_compute.scheduled())
                 deschedule(event_compute);
+            if (task.cb)
+                task.cb->onComputeAbort();
         }
 
         void startCompute(uint8_t* input, uint8_t* output, uint32_t size, ComputeCallBack* cb) {

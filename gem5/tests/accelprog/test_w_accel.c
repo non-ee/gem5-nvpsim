@@ -3,7 +3,7 @@
 #include "peripheral.h"
 #include <stdint.h>
 
-#define COUNT 10
+#define COUNT 50
 
 volatile uint8_t src_array[COUNT];
 volatile uint8_t dst_array[COUNT];
@@ -25,44 +25,39 @@ void sensing_task() {
     periLogout(TMP_SENSOR_ID);
 }
 
-void vector_add() {
+void pre_compute() {
     for (int i = 0; i < COUNT; i++) {
-        dst_array[i] = src_array[i] * 2 + 3;
+        src_array[i] -= 20;  // assume temp baseline = 20°C
     }
 }
 
-void heavy_task() {
-    // Phase 1: normalize
-    for (int i = 0; i < COUNT; i++)
-        src_array[i] -= 20;  // assume temp baseline = 20°C
-
-    // Phase 2: heavy loop
-    accel_set_addr((uint64_t)src_array, (uint64_t)dst_array, COUNT);
-    accel_start();
-
-    // Phase 3: reduce output
+void post_compute() {
     uint32_t checksum = 0;
     for (int i = 0; i < COUNT; i++)
         checksum += dst_array[i];
-
     dst_array[0] = checksum & 0xFF;
+}
+
+void heavy_compute() {
+    accel_set_addr((uint64_t)src_array, (uint64_t)dst_array, COUNT);
+    accel_start();
 }
 
 void display_output() {
     printf("dst_array[0] = %d\n", dst_array[COUNT-1]);
 }
 
-void tasks() {
-    accel_map_registers();
-    sensing_task();
-    heavy_task();
-    display_output();
-    accel_unmap_registers();
-}
-
 int main() {
 
-    tasks();
+    accel_map_registers();
+    sensing_task();
+
+    pre_compute();
+    heavy_compute();
+    post_compute();
+
+    display_output();
+    accel_unmap_registers();
 
     return 0;
 }

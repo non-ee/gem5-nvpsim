@@ -126,7 +126,7 @@ system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(1.0)]
 ###################################
 count = float(sys.argv[4])
 perf_boost = float(sys.argv[5])
-compute_tick_per_count = 1422050
+compute_tick_per_count = 1423500
 total_tick = count * compute_tick_per_count / perf_boost
 
 system.accel = Accelerator()

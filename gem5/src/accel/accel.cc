@@ -5,6 +5,7 @@
 #include "debug/MemoryAccess.hh"
 #include "engy/state_machine.hh"
 #include "base/trace.hh"
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -29,15 +30,48 @@ const char *Accelerator::TickEvent::description() const
     return "Accelerator Tick Event";
 }
 
+void Accelerator::fsmStep()
+{
+    switch (state)
+    {
+        case IDLE :
+            break;
+        case START:
+            break;
+        case INIT:
+            doInit();
+            state = IDLE;
+            break;
+        case DMA_READ:
+            doDmaRead();
+            state = IDLE;
+            break;
+        case DMA_WRITE:
+            doDmaWrite();
+            state = IDLE;
+            break;
+        case COMPUTE:
+            doCompute();
+            state = IDLE;
+            break;
+        case CPU_INT:
+            triggerInterrupt();
+            break;
+        case DONE:
+            finishSuccess();
+            break;
+    }
+}
+
 void Accelerator::tick()
 {
-    Tick latency = clockPeriod();
-    double EngyConsume = 0;
-    EngyConsume = energy_per_cycle[energy_state] * ticksToCycles(latency);
+    if (busy) fsmStep();
 
-    char dev_name[100] = "Accelerator";
-    EnergyObject::consumeEnergy(dev_name, EngyConsume);
+    Tick latency = clockPeriod();
+    double EngyConsume = energy_per_cycle[energy_state] * ticksToCycles(latency);
+    EnergyObject::consumeEnergy(accel_name, EngyConsume);
     DPRINTF(EnergyMgmt, "Accelerator consumed %f energy\n", EngyConsume);
+
     schedule(tickEvent, curTick() + latency);
 }
 
@@ -99,6 +133,8 @@ Accelerator::Accelerator(const Params *p) :
     energy_state(AccelEnergyState::STATE_OFF),
     event_init(this, false, Event::Accelerator_Interrupt)
 {
+    strcpy(accel_name, "Accelerator");
+
     /* configure compute unit */
     computeUnit = new ComputeUnit(getEventQueue(0), delay_compute);
 
@@ -108,10 +144,10 @@ Accelerator::Accelerator(const Params *p) :
 
     src_addr = 0;
     dst_addr = 0;
-    cmd_reg = 0;
+    count = 0;
 
+    state = IDLE;
     busy = false;
-    need_recover = false;
 
     input_buffer = nullptr;
     output_buffer = nullptr;
@@ -167,42 +203,39 @@ Accelerator::getSlavePort(const std::string &if_name, PortID idx)
 void Accelerator::onDmaReadDone()
 {
     // Handle DMA read completion
-    cmd_reg &= ~CMD_DMA_READ;
+    DPRINTF(Accelerator, "DMA read done...\n");
+    state = COMPUTE;
 }
 
 void Accelerator::onDmaWriteDone()
 {
     // Handle DMA write completion
-    cmd_reg &= ~CMD_DMA_WRITE;
-    cmd_reg |= CMD_CPU_INTERRUPT;
+    DPRINTF(Accelerator, "DMA write done...\n");
+    state = CPU_INT;
 }
 
 /* ComputeTask interfaces implementation */
 void Accelerator::onComputeDone()
 {
     DPRINTF(Accelerator, "Compute done...\n");
-    cmd_reg &= ~CMD_COMPUTE;
-    cmd_reg |= CMD_DMA_WRITE;
+    state = DMA_WRITE;
 }
 
 void Accelerator::onComputeAbort()
 {
     DPRINTF(Accelerator, "Compute failed...\n");
-    cmd_reg &= ~CMD_COMPUTE;
-    energy_state = AccelEnergyState::STATE_IDLE;
+    state = IDLE;
 }
 
 /** Initialize the accelerator */
-void Accelerator::initEvent()
+void Accelerator::initDone()
 {
     /* Initialize any necessary resources or state */
     input_buffer = new uint8_t[count];
     output_buffer = new uint8_t[count];
 
     DPRINTF(Accelerator, "Initialization done\n");
-
-    cmd_reg &= ~CMD_INIT;
-    cmd_reg |= CMD_DMA_READ;
+    state = DMA_READ;
 }
 
 void Accelerator::doInit()
@@ -266,8 +299,6 @@ void Accelerator::abortCompute()
 {
     DPRINTF(Accelerator, "Compute aborted...\n");
     computeUnit->abort();
-
-    energy_state = AccelEnergyState::STATE_OFF;
 }
 
 /** Receive atomic request **/
@@ -281,40 +312,41 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
     {
         switch (offset)
         {
-        case 0x00: // CMD
-            cmd_reg = *(pkt->getConstPtr<uint8_t>());
-            if (cmd_reg & CMD_START)
-            { // START bit
-                if (!busy)
-                {
-                    DPRINTF(Accelerator, "CMD_INIT received: scheduling initialization\n");
-                    busy = true;
-                    cmd_reg &= ~CMD_START;
-                    cmd_reg |= CMD_INIT;
-                    DPRINTF(Accelerator, "busy = %x cmd_reg = %x\n", busy, cmd_reg);
+            case 0x00: // CMD
+            {
+                uint8_t cmd = *(pkt->getConstPtr<uint8_t>());
+                state = static_cast<AccelState>(cmd);
+                if (state == START) {
+                    // START bit
+                    if (!busy)
+                    {
+                        DPRINTF(Accelerator, "INIT received: scheduling initialization\n");
+                        busy = true;
+                        state = INIT;
+                    }
+                    else
+                    {
+                        DPRINTF(Accelerator, "%s: START requested but busy\n", name());
+                    }
                 }
-                else
-                {
-                    DPRINTF(Accelerator, "%s: START requested but busy\n", name());
-                }
+                break;
             }
-            break;
 
-        case 0x08: // SRC_ADDR
-            src_addr = *(pkt->getConstPtr<Addr>());
-            break;
+            case 0x08: // SRC_ADDR
+                src_addr = *(pkt->getConstPtr<Addr>());
+                break;
 
-        case 0x10: // DST_ADDR
-            dst_addr = *(pkt->getConstPtr<Addr>());
-            break;
+            case 0x10: // DST_ADDR
+                dst_addr = *(pkt->getConstPtr<Addr>());
+                break;
 
-        case 0x18: // COUNT
-            count = *(pkt->getConstPtr<uint32_t>());
-            break;
+            case 0x18: // COUNT
+                count = *(pkt->getConstPtr<uint32_t>());
+                break;
 
-        default:
-            DPRINTF(Accelerator, "%s: Unknown write offset %#x val %#x\n", name(), offset);
-            break;
+            default:
+                DPRINTF(Accelerator, "%s: Unknown write offset %#x val %#x\n", name(), offset);
+                break;
         }
     }
     else if (pkt->isRead())
@@ -323,7 +355,7 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
         switch (offset)
         {
         case 0x00:
-            ret = cmd_reg;
+            ret = state;
             break;
 
         case 0x20:
@@ -363,46 +395,18 @@ AddrRange Accelerator::getAddrRanges() const
 /** handle energy manager messages (optional) **/
 int Accelerator::handleMsg(const EnergyMsg &msg)
 {
-    DPRINTF(Accelerator, "busy = %x cmd_reg = %x\n", busy, cmd_reg);
-    if (!busy)
-        return 1;
+    if (!busy) return 1;
 
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
     {
-        // if (energy_state == AccelEnergyState::STATE_OFF) return 1;
-
-        need_recover = true;
         DPRINTF(Accelerator, "Powering off ...\n");
-        energy_state = AccelEnergyState::STATE_OFF;
+        energy_state = STATE_OFF;
         handleInterrupt();
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
-        DPRINTF(Accelerator, "cmd_reg = %b\n", cmd_reg);
-        if (need_recover) {
-            handleRecovery();
-            need_recover = false;
-            return 1;
-        }
-        // if (energy_state == STATE_OFF) {
-        //     DPRINTF(Accelerator, "Powering on ...\n");
-        //     handleRecovery();
-        //     return 1;
-        // }
-
-        // Progress execution
-        if (cmd_reg & CMD_INIT)
-            doInit();
-        else if (cmd_reg & CMD_DMA_READ)
-            doDmaRead();
-        else if (cmd_reg & CMD_DMA_WRITE)
-            doDmaWrite();
-        else if (cmd_reg & CMD_COMPUTE)
-            doCompute();
-        else if (cmd_reg & CMD_CPU_INTERRUPT)
-            triggerInterrupt();
-        else if (cmd_reg & CMD_DONE)
-            finishSuccess();
+        energy_state = STATE_IDLE;
+        handleRecovery();
     }
     else {
         DPRINTF(EnergyMgmt, "Unknown message type received!\n");
@@ -415,20 +419,20 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 void Accelerator::handleInterrupt()
 {
     DPRINTF(Accelerator, "Accelerator: handles interrupt\n");
-    if (cmd_reg & CMD_INIT) {
+    if (state == INIT) {
         if (event_init.scheduled())
             deschedule(event_init);
     }
-    else if (cmd_reg & CMD_COMPUTE)
+    else if (state == COMPUTE)
         abortCompute();
 }
 
 void Accelerator::handleRecovery()
 {
     DPRINTF(Accelerator, "Accelerator: handles recovery\n");
-    if (cmd_reg & CMD_INIT)
+    if (state == INIT)
         doInit();
-    else if (cmd_reg & CMD_COMPUTE)
+    else if (state == COMPUTE)
         doCompute();
 }
 
@@ -438,13 +442,12 @@ void Accelerator::triggerInterrupt()
     DPRINTF(Accelerator, "Accelerator: triggers an interrupt to CPU\n");
     energy_state = STATE_IDLE;
     cpu->accelInterrupt(delay_cpu_interrupt);
+    state = DONE;
 }
 
 void Accelerator::finishSuccess()
 {
     DPRINTF(Accelerator, "Finished successfully\n");
-    cmd_reg &= ~CMD_CPU_INTERRUPT;
-    cmd_reg |= CMD_DONE;
     busy = false;
     energy_state = STATE_OFF;
 }
