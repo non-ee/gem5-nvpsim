@@ -7,11 +7,12 @@ class Accelerator(MemObject):
     type = "Accelerator"
     cxx_header = "accel/accel.hh"
 
-    ctrlPort = SlavePort("Slave port of accelerator")
+    ctrl_port = SlavePort("Slave port of accelerator")
+    compute_unit = Param.BaseComputeUnit(NULL, "The compute unit of the accelerator")
 
     cpu = Param.BaseCPU(NULL, "The cpu of the system")
-    dmaCtrl = Param.DmaCtrl(NULL, "The dma controller of the accelerator")
-    controlRange = Param.AddrRange("1MB", "The control range of the accelerator")
+    dma_ctrl = Param.DmaCtrl(NULL, "The dma controller of the accelerator")
+    control_range = Param.AddrRange("1MB", "The control range of the accelerator")
     count = Param.Int(0, "The count of the element data")
 
     delay_init = Param.Clock("2ms", "The tick delay for initialization")

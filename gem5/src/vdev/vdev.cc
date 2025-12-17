@@ -191,7 +191,8 @@ VirtualDevice::triggerInterrupt()
 		cpu->virtualDeviceInterrupt(dev_name, delay_cpu_interrupt);
 		cpu->virtualDeviceEnd(id);
 	}
-	// finishSuccess();
+
+	finishSuccess();
 }
 
 // Todo: What is the correct peripheral model with four voltage steps?
@@ -290,6 +291,8 @@ VirtualDevice::tick()
 	// Todo: where did we declare the EnergyMgmt Obj.?
 	// EnergyMgmt::consumeEnergy() to realize energy consumption.
 	EnergyObject::consumeEnergy(dev_name, EngyConsume);
+	total_energy_consumed += EngyConsume;
+
 	// scheduler the next vdev::tickEvent to EventQueue
 	DPRINTF(EnergyMgmt, "Virtual Device consumed %f energy\n", EngyConsume);
 	schedule(tickEvent, curTick() + latency);
@@ -476,6 +479,10 @@ bool
 VirtualDevice::finishSuccess()
 {
 	/* Todo: Need further implementation. */
+	std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
+	assert(fout);
+   	fout << "VirtualDevice: " << total_energy_consumed << std::endl;
+   	fout.close();
 	return 1;
 }
 

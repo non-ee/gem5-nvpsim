@@ -8,6 +8,9 @@ if os.path.exists("m5out/devicedata"):
 if os.path.exists("m5out/power_failure"):
 	os.remove("m5out/power_failure")
 
+if os.path.exists("m5out/energy_consumed.txt"):
+	os.remove("m5out/energy_consumed.txt")
+
 
 import sys
 cap = float(sys.argv[1])
@@ -32,7 +35,7 @@ system.mem_ranges = [
 ###################################
 
 # Power Supply (file path and sample period)
-energy_path = 'profile/solar_new_60000.txt'
+energy_path = 'profile/solar_new_30000.txt'
 system.energy_mgmt = EnergyMgmt(path_energy_profile = energy_path, energy_time_unit = '10us')
 # Energy Management Strategy: State Machine
 system.energy_mgmt.state_machine = SimpleEnergySM()
@@ -87,7 +90,7 @@ system.vaddr_vdev_ranges = [
 
 # Virtual device #0
 system.vdev0 = VirtualDevice()
-system.vdev0.id = 0;
+system.vdev0.id = 0
 system.vdev0.cpu = system.cpu
 # Access address range for the device
 system.vdev0.range = system.vdev_ranges[0]
@@ -131,15 +134,15 @@ total_tick = count * compute_tick_per_count / perf_boost
 
 system.accel = Accelerator()
 system.accel.cpu = system.cpu
+system.accel.compute_unit = SimpleComputeUnit(latency="10ms")
+system.accel.dma_ctrl = system.dma_ctrl
 system.accel.s_energy_port = system.energy_mgmt.m_energy_port
-system.accel.ctrlPort = system.membus.master
-system.accel.dmaCtrl = system.dma_ctrl
+system.accel.ctrl_port = system.membus.master
 
 system.accel_range = AddrRange(0x40000000, size='2MB')
-system.accel.controlRange = system.accel_range
+system.accel.control_range = system.accel_range
 
 system.accel.delay_init = '100us'
-system.accel.delay_compute = '%dt' % total_tick
 system.accel.delay_cpu_interrupt = '100us'
 system.accel.energy_per_cycle = [Float(0.0), Float(0.5), Float(5.0)]
 
@@ -157,7 +160,7 @@ root = Root(full_system = False, system = system)
 m5.instantiate()
 
 print "Beginning simulation!"
-exit_event = m5.simulate(int(299900000))
+exit_event = m5.simulate(int(599900000))
 print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause())
 
 ###################################

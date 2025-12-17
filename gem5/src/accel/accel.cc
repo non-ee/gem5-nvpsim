@@ -1,5 +1,4 @@
 #include "accel/accel.hh"
-#include "accel.hh"
 #include "debug/Accelerator.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/MemoryAccess.hh"
@@ -9,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 #include <stdint.h>
 #include <unistd.h>
 
@@ -70,8 +70,9 @@ void Accelerator::tick()
     Tick latency = clockPeriod();
     double EngyConsume = energy_per_cycle[energy_state] * ticksToCycles(latency);
     EnergyObject::consumeEnergy(accel_name, EngyConsume);
-    DPRINTF(EnergyMgmt, "Accelerator consumed %f energy\n", EngyConsume);
+    total_energy_consumed += EngyConsume;
 
+    DPRINTF(EnergyMgmt, "Accelerator consumed %f energy\n", EngyConsume);
     schedule(tickEvent, curTick() + latency);
 }
 
@@ -119,15 +120,15 @@ Accelerator::CtrlPort::getAddrRanges() const
 /* ---------------- Accelerator implementation ---------------- */
 Accelerator::Accelerator(const Params *p) :
     MemObject(p),
-    ctrlPort(name() + ".ctrlPort", this),
+    ctrlPort(name() + ".ctrl_port", this),
     tickEvent(this),
 
     cpu(p->cpu),
-    dmaCtrl(p->dmaCtrl),
-    controlRange(p->controlRange),
+    computeUnit(p->compute_unit),
+    dmaCtrl(p->dma_ctrl),
+    controlRange(p->control_range),
 
     delay_init(p->delay_init),
-    delay_compute(p->delay_compute),
     delay_cpu_interrupt(p->delay_cpu_interrupt),
 
     energy_state(AccelEnergyState::STATE_OFF),
@@ -135,12 +136,11 @@ Accelerator::Accelerator(const Params *p) :
 {
     strcpy(accel_name, "Accelerator");
 
-    /* configure compute unit */
-    computeUnit = new ComputeUnit(getEventQueue(0), delay_compute);
-
     energy_per_cycle[0] = p->energy_per_cycle[0];
     energy_per_cycle[1] = p->energy_per_cycle[1];
     energy_per_cycle[2] = p->energy_per_cycle[2];
+
+    total_energy_consumed = 0;
 
     src_addr = 0;
     dst_addr = 0;
@@ -181,6 +181,8 @@ void Accelerator::init()
 
     DPRINTF(Accelerator, "%s initialized: controlRange: %#llx - %#llx\n",
             name(), controlRange.start(), controlRange.end());
+    DPRINTF(Accelerator, "%s connected master energy port: %s\n",
+        name(), getMasterEnergyPort().owner->name());
 
     // set default energy state
     energy_state = STATE_OFF;
@@ -193,7 +195,7 @@ void Accelerator::init()
 BaseSlavePort &
 Accelerator::getSlavePort(const std::string &if_name, PortID idx)
 {
-    if (if_name == "ctrlPort" || if_name == "ctrl")
+    if (if_name == "ctrl_port" || if_name == "ctrl")
     {
         return ctrlPort;
     }
@@ -287,7 +289,7 @@ void Accelerator::doCompute()
 {
     DPRINTF(Accelerator, "Compute started...\n");
     energy_state = STATE_ON;
-    computeUnit->startCompute(
+    computeUnit->start(
         input_buffer,
         output_buffer,
         count,
@@ -450,6 +452,12 @@ void Accelerator::finishSuccess()
     DPRINTF(Accelerator, "Finished successfully\n");
     busy = false;
     energy_state = STATE_OFF;
+
+
+    std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
+    assert(fout);
+    fout << "Accelerator: " << total_energy_consumed << std::endl;
+    fout.close();
 }
 
 Accelerator *AcceleratorParams::create() {

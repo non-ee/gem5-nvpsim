@@ -12,8 +12,8 @@ perf_boost=1
 cap=10
 energy=6
 
-arg_prog=w_accel
-# arg_prog=wo_accel
+# arg_prog=w_accel
+arg_prog=wo_accel
 
 prog="test_${arg_prog}"
 script="configs/accel/sim_${arg_prog}.py"

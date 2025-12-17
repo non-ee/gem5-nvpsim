@@ -170,6 +170,9 @@ protected:
 	/** Energy modes of vdev : [OFF, SLEEP, NORMAL, ACTIVE]; **/
 	VdevEngyState vdev_energy_state;
 
+	/** Energy consumption of the vdev **/
+	double total_energy_consumed = 0;
+
 	/** The normal/init interrupt event scheduled by vdev **/
 	EventWrapper<VirtualDevice, &VirtualDevice::triggerInterrupt> event_interrupt;
 	EventWrapper<VirtualDevice, &VirtualDevice::triggerInterrupt> event_init;

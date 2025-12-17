@@ -2,9 +2,13 @@ Import('*')
 
 Source('accel.cc')
 Source('dma_ctrl.cc')
+Source('compute_unit.cc')
 
 SimObject('Accelerator.py')
 SimObject('DmaCtrl.py')
+SimObject('BaseComputeUnit.py')
+SimObject('SimpleComputeUnit.py')
 
 DebugFlag('Accelerator')
 DebugFlag('DmaCtrl')
+DebugFlag('ComputeUnit')

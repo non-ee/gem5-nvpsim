@@ -34,7 +34,6 @@ enum AccelState {
 
 class Accelerator : public MemObject, public DmaCallBack, public ComputeCallBack
 {
-
     private:
     char accel_name[100];
 
@@ -100,8 +99,8 @@ public:
 protected:
     /** CPU / system references */
     BaseCPU* cpu;
+    BaseComputeUnit* computeUnit;
     DmaCtrl* dmaCtrl;
-    ComputeUnit* computeUnit;
     AddrRange controlRange;
 
     /** I/O Buffers **/
@@ -115,9 +114,11 @@ protected:
     AccelState state;
     bool busy;
 
+    /** Energy consumption report**/
+    double total_energy_consumed;
+
     /** Status */
     Tick delay_init;
-    Tick delay_compute;
     Tick delay_cpu_interrupt;
 
     double energy_per_cycle[3] = {0.0, 0.2, 2.0};

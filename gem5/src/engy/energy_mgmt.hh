@@ -42,6 +42,11 @@ protected:
     BaseHarvester *harvest_module;
     double capacity;
 
+    double total_energy_consumed;
+    double total_energy_harvested;
+
+    void onSimulationExit();
+
     // for all SMs, the consuming msg must be 0.
     enum MsgType
     {

@@ -5,6 +5,8 @@
 #include <math.h>
 #include <string.h>
 #include "sim/eventq.hh"
+#include "sim/sim_exit.hh"
+#include "base/callback.hh"
 #include "engy/energy_mgmt.hh"
 #include "engy/state_machine.hh"
 #include "engy/energy_harvester.hh"
@@ -27,6 +29,22 @@ EnergyMgmt::EnergyMgmt(const Params *p)
           _path_energy_profile(p->path_energy_profile)
 {
     msg_togo.resize(0);
+
+    total_energy_consumed = 0;
+    total_energy_harvested = 0;
+
+    /* register end-of-simulation callback */
+    registerExitCallback(
+        new MakeCallback<EnergyMgmt, &EnergyMgmt::onSimulationExit>(this)
+    );
+}
+
+void EnergyMgmt::onSimulationExit() {
+    std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
+    assert(fout);
+    fout << "EnergyMgmt (consumed): " << total_energy_consumed << std::endl;
+    fout << "EnergyMgmt (harvested): " << total_energy_harvested << std::endl;
+    fout.close();
 }
 
 EnergyMgmt::~EnergyMgmt() {}
@@ -73,6 +91,9 @@ EnergyMgmt::consumeEnergy(char *sender, double val)
         if (strcmp(sender, "AtomicCPU")==0) {
             DPRINTF(EnergyMgmt, "Energy %lf is consumed by %s. Energy remained: %lf\n", cons_unit, sender, energy_remained);
         }
+
+        // Update total energy consumed and harvested
+        total_energy_consumed += val;
     }
 
     // Energy Harvesting, if val < 0
@@ -105,6 +126,7 @@ EnergyMgmt::consumeEnergy(char *sender, double val)
 
     // judge if energy_remained triggers state_machine changes
     state_machine->update(energy_remained);
+
 
     return 1;
 }
@@ -184,6 +206,9 @@ EnergyMgmt::energyHarvest()
     strcpy(dev_name, "harvester");
     consumeEnergy(dev_name, -energy_val);
     energy_harvest_data.pop_back();
+
+    // Update total energy harvested
+    total_energy_harvested += energy_val;
 
     /* Trigger the next harvest function. */
     schedule(event_energy_harvest, curTick() + time_unit);

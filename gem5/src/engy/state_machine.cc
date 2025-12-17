@@ -13,15 +13,15 @@ BaseEnergySM::BaseEnergySM(const Params *p) : SimObject(p), mgmt(NULL)
 	energy_consume_lower_bound = 0;
 }
 
-void 
+void
 BaseEnergySM::broadcastMsg(const EnergyMsg &msg)
 {
 	mgmt->broadcastMsgAsEvent(msg);
 }
 
 /******* SimpleEnergySM *******/
-SimpleEnergySM::SimpleEnergySM(const Params *p) : 
-	BaseEnergySM(p), 
+SimpleEnergySM::SimpleEnergySM(const Params *p) :
+	BaseEnergySM(p),
 	state(SimpleEnergySM::State::STATE_POWER_OFF),
 	thres_1_to_off(p->thres_1_to_off),
 	thres_off_to_1(p->thres_off_to_1)
@@ -30,7 +30,7 @@ SimpleEnergySM::SimpleEnergySM(const Params *p) :
 	energy_consume_lower_bound = thres_1_to_off;
 }
 
-void 
+void
 SimpleEnergySM::init()
 {
 	EnergyMsg msg;
@@ -53,7 +53,7 @@ void SimpleEnergySM::update(double _energy)
 	msg.val = 0;
 
 	// power failure
-	if (state == STATE_POWER_ON && _energy <= thres_1_to_off) 
+	if (state == STATE_POWER_ON && _energy <= thres_1_to_off)
 	{
 		state = State::STATE_POWER_OFF;
 		msg.type = MsgType::POWER_OFF;
@@ -68,10 +68,10 @@ void SimpleEnergySM::update(double _energy)
 		fout.close();
 
 		broadcastMsg(msg);
-	} 
+	}
 
 	// power recovery
-	else if (state == State::STATE_POWER_OFF && _energy >= thres_off_to_1) 
+	else if (state == State::STATE_POWER_OFF && _energy >= thres_off_to_1)
 	{
 		state = State::STATE_POWER_ON;
 		msg.type = MsgType::POWER_ON;
