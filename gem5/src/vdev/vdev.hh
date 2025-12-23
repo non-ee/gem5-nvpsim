@@ -173,6 +173,8 @@ protected:
 	/** Energy consumption of the vdev **/
 	double total_energy_consumed = 0;
 
+	void onSimulationExit();
+
 	/** The normal/init interrupt event scheduled by vdev **/
 	EventWrapper<VirtualDevice, &VirtualDevice::triggerInterrupt> event_interrupt;
 	EventWrapper<VirtualDevice, &VirtualDevice::triggerInterrupt> event_init;

@@ -13,6 +13,7 @@
 
 #include <string.h>
 #include "vdev/vdev.hh"
+#include "base/callback.hh"
 #include "engy/state_machine.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/VirtualDevice.hh"
@@ -116,6 +117,11 @@ VirtualDevice::VirtualDevice(const Params *p) :
 	energy_consumed_per_cycle_vdev[1] = p->energy_consumed_per_cycle_vdev[1];
 	energy_consumed_per_cycle_vdev[2] = p->energy_consumed_per_cycle_vdev[2];
 	energy_consumed_per_cycle_vdev[3] = p->energy_consumed_per_cycle_vdev[3];
+
+	/* register end-of-simulation callback */
+	registerExitCallback(
+	    new MakeCallback<VirtualDevice, &VirtualDevice::onSimulationExit>(this)
+	);
 }
 
 VirtualDevice::~VirtualDevice()
@@ -123,6 +129,15 @@ VirtualDevice::~VirtualDevice()
     if (tickEvent.scheduled()) {
         deschedule(tickEvent);
     }
+}
+
+void
+VirtualDevice::onSimulationExit()
+{
+    std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
+    assert(fout);
+    fout << "VirtualDevice: " << total_energy_consumed << std::endl;
+    fout.close();
 }
 
 void
@@ -192,7 +207,7 @@ VirtualDevice::triggerInterrupt()
 		cpu->virtualDeviceEnd(id);
 	}
 
-	finishSuccess();
+	// finishSuccess();
 }
 
 // Todo: What is the correct peripheral model with four voltage steps?
@@ -479,10 +494,6 @@ bool
 VirtualDevice::finishSuccess()
 {
 	/* Todo: Need further implementation. */
-	std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
-	assert(fout);
-   	fout << "VirtualDevice: " << total_energy_consumed << std::endl;
-   	fout.close();
 	return 1;
 }
 

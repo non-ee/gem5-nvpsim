@@ -4,6 +4,7 @@
 #include "debug/MemoryAccess.hh"
 #include "engy/state_machine.hh"
 #include "base/trace.hh"
+#include "base/callback.hh"
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -151,6 +152,11 @@ Accelerator::Accelerator(const Params *p) :
 
     input_buffer = nullptr;
     output_buffer = nullptr;
+
+    /* register end-of simulation callback */
+    registerExitCallback(
+        new MakeCallback<Accelerator, &Accelerator::onSimulationExit>(this)
+    );
 }
 
 Accelerator::~Accelerator()
@@ -171,6 +177,14 @@ Accelerator::~Accelerator()
         delete[] output_buffer;
         output_buffer = nullptr;
     }
+}
+
+void Accelerator::onSimulationExit()
+{
+    std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
+    assert(fout);
+    fout << "Accelerator: " << total_energy_consumed << std::endl;
+    fout.close();
 }
 
 void Accelerator::init()
@@ -452,12 +466,6 @@ void Accelerator::finishSuccess()
     DPRINTF(Accelerator, "Finished successfully\n");
     busy = false;
     energy_state = STATE_OFF;
-
-
-    std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
-    assert(fout);
-    fout << "Accelerator: " << total_energy_consumed << std::endl;
-    fout.close();
 }
 
 Accelerator *AcceleratorParams::create() {

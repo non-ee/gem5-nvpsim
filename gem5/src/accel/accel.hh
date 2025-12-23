@@ -117,6 +117,8 @@ protected:
     /** Energy consumption report**/
     double total_energy_consumed;
 
+    void onSimulationExit();
+
     /** Status */
     Tick delay_init;
     Tick delay_cpu_interrupt;
