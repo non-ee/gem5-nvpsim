@@ -3,7 +3,7 @@
 #include "peripheral.h"
 #include <stdint.h>
 
-#define COUNT 10
+#define COUNT 20
 
 volatile uint8_t src_array[COUNT];
 volatile uint8_t dst_array[COUNT];
