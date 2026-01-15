@@ -772,8 +772,10 @@ BaseCPU::getTotalLat()
 }
 
 void
-BaseCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_cpu_interrupt)
-{}
+BaseCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_cpu_interrupt, std::function<void()> cb)
+{
+    // Implement the interrupt logic here
+}
 
 void
 BaseCPU::virtualDeviceRecover(char* vdev_name, Tick delay_vdev_init)

@@ -1,3 +1,10 @@
+W_ACCEL ?= 0
+CFLAGS :=
+
+ifeq ($(W_ACCEL), 1)
+	CFLAGS += -DW_ACCEL
+endif
+
 accel_test: accel_reg.o peripheral.o delay.o accel_test.c
 	aarch64-linux-gnu-gcc-5 -o accel_test accel_test.c peripheral.o accel_reg.o delay.o -static
 
@@ -5,7 +12,7 @@ test_wo_accel: accel_reg.o peripheral.o delay.o test_wo_accel.c
 	aarch64-linux-gnu-gcc-5 -o test_wo_accel test_wo_accel.c peripheral.o accel_reg.o delay.o -static
 
 test_w_accel: accel_reg.o peripheral.o delay.o test_w_accel.c
-	aarch64-linux-gnu-gcc-5 -o test_w_accel test_w_accel.c peripheral.o accel_reg.o delay.o -static
+	aarch64-linux-gnu-gcc-5 $(CFLAGS) -o test_w_accel test_w_accel.c peripheral.o accel_reg.o delay.o -static
 
 accel_reg.o: accel_reg.c accel_reg.h
 	aarch64-linux-gnu-gcc-5 -c accel_reg.c

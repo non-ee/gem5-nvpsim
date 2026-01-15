@@ -576,7 +576,7 @@ class BaseCPU : public MemObject
     int registerVDev(Tick lat, uint32_t &id);
     // Get total latency of devices
     Tick getTotalLat();
-    virtual void virtualDeviceInterrupt(char* vdev_name, Tick delay_cpu_interrupt);
+    virtual void virtualDeviceInterrupt(char* vdev_name, Tick delay_cpu_interrupt, std::function<void()> cb);
     virtual void virtualDeviceRecover(char* vdev_name, Tick delay_vdev_init);
     virtual int virtualDeviceStart(uint32_t id);
     virtual int virtualDeviceEnd(uint32_t id);

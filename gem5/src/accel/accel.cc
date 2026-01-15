@@ -38,6 +38,7 @@ void Accelerator::fsmStep()
         case IDLE :
             break;
         case START:
+            state = INIT;
             break;
         case INIT:
             doInit();
@@ -61,20 +62,31 @@ void Accelerator::fsmStep()
         case DONE:
             finishSuccess();
             break;
+        case NOP:
+            break;
+        case RECOVERY:
+            break;
     }
 }
 
 void Accelerator::tick()
 {
-    if (busy) fsmStep();
-
     Tick latency = clockPeriod();
     double EngyConsume = energy_per_cycle[energy_state] * ticksToCycles(latency);
     EnergyObject::consumeEnergy(accel_name, EngyConsume);
+
     total_energy_consumed += EngyConsume;
 
     DPRINTF(EnergyMgmt, "Accelerator consumed %f energy\n", EngyConsume);
     schedule(tickEvent, curTick() + latency);
+
+    if (busy) {
+        total_ticks += latency;
+        fsmStep();
+    }
+    else if (energy_state == STATE_OFF) {
+        total_poweroff_ticks += latency;
+    }
 }
 
 /* ---------------- CtrlPort implementation ---------------- */
@@ -142,6 +154,8 @@ Accelerator::Accelerator(const Params *p) :
     energy_per_cycle[2] = p->energy_per_cycle[2];
 
     total_energy_consumed = 0;
+    total_ticks = 0;
+    total_poweroff_ticks = 0;
 
     src_addr = 0;
     dst_addr = 0;
@@ -185,6 +199,12 @@ void Accelerator::onSimulationExit()
     assert(fout);
     fout << "Accelerator: " << total_energy_consumed << std::endl;
     fout.close();
+
+    fout.open("m5out/ticks_output.txt", std::ios::app);
+    assert(fout);
+    fout << "Accelerator (total_ticks): " << total_ticks << std::endl;
+    // fout << "Accelerator (total_poweroff_ticks): " << total_poweroff_ticks << std::endl;
+    fout.close();
 }
 
 void Accelerator::init()
@@ -199,6 +219,7 @@ void Accelerator::init()
         name(), getMasterEnergyPort().owner->name());
 
     // set default energy state
+    state = NOP;
     energy_state = STATE_OFF;
     if (!tickEvent.scheduled())
     {
@@ -336,9 +357,9 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
                     // START bit
                     if (!busy)
                     {
-                        DPRINTF(Accelerator, "INIT received: scheduling initialization\n");
-                        busy = true;
+                        DPRINTF(Accelerator, "START received: scheduling initialization\n");
                         state = INIT;
+                        busy = true;
                     }
                     else
                     {
@@ -411,17 +432,23 @@ AddrRange Accelerator::getAddrRanges() const
 /** handle energy manager messages (optional) **/
 int Accelerator::handleMsg(const EnergyMsg &msg)
 {
-    if (!busy) return 1;
+    if (state == NOP)
+        return 1;
 
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
     {
         DPRINTF(Accelerator, "Powering off ...\n");
         energy_state = STATE_OFF;
+        busy = false;
+
         handleInterrupt();
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
+        DPRINTF(Accelerator, "Powering on ...\n");
         energy_state = STATE_IDLE;
+        busy = true;
+
         handleRecovery();
     }
     else {

@@ -1,0 +1,7 @@
+Import('*')
+
+Source('access_monitor.cc')
+
+SimObject('AccessMonitor.py')
+
+DebugFlag('AccessMonitor')

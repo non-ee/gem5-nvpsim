@@ -7,6 +7,7 @@
 
 #include "sim/sim_object.hh"
 #include "engy/energy_mgmt.hh"
+#include "base/callback.hh"
 #include "params/BaseEnergySM.hh"
 #include "params/SimpleEnergySM.hh"
 
@@ -67,7 +68,13 @@ public:
 protected:
 	State state;
 	double thres_1_to_off;
-	double thres_off_to_1; 
+	double thres_off_to_1;
+
+	Tick outage_start_tick;
+	Tick total_charging_time;
+	bool in_outage;
+
+	virtual void onSimulationExit();
 };
 
 #endif //GEM5_STATE_MACHINE_HH

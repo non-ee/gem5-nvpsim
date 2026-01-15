@@ -46,7 +46,7 @@ private:
 	TickEvent tickEvent;
 
 	/** Record the execution state and energy consumption. **/
-	void tick();
+	virtual void tick();
 
 	/** Definitions of Device Port in Virtual Device **/
 	/** Device Port is a slave Energy Port of vdev to connect to the Energy framework. */
@@ -105,7 +105,7 @@ public:
 	/** Method to trigger an interrupt after task finishes. */
 	void triggerInterrupt();
 	/** Simple method to access data. */
-	Tick access(PacketPtr pkt);
+	virtual Tick access(PacketPtr pkt);
 	/** Handle energy state changes. */
 	virtual int handleMsg(const EnergyMsg &msg);
 	/** Method for python scripts to get port. */
@@ -118,6 +118,9 @@ public:
 	void recvFunctional(PacketPtr pkt);
 	bool recvTimingReq(PacketPtr pkt);
 	void recvRespRetry();
+
+	/*+ End of simulation **/
+	virtual void onSimulationExit();
 
 	/** Vdev Energy State related parameters **/
 	/* Three states are defined as energy modes, that are:
@@ -172,14 +175,21 @@ protected:
 
 	/** Energy consumption of the vdev **/
 	double total_energy_consumed = 0;
+	Tick sensing_start = 0;
+	Tick total_ticks = 0;
+	Tick total_abort_time = 0;
 
-	void onSimulationExit();
+	int count = 0;
+
 
 	/** The normal/init interrupt event scheduled by vdev **/
 	EventWrapper<VirtualDevice, &VirtualDevice::triggerInterrupt> event_interrupt;
 	EventWrapper<VirtualDevice, &VirtualDevice::triggerInterrupt> event_init;
 	/** Tell whether the task is successful */
 	virtual bool finishSuccess();
+
+	/** Clear up execution on finish **/
+	virtual void onFinish();
 	/** Implement of memories and registers for the vdev. */
 	uint8_t *pmem;
 

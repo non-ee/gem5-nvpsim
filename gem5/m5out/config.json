@@ -40,6 +40,7 @@
                 "peer": [
                     "system.mem_ctrl.port", 
                     "system.vdev0.port", 
+                    "system.vdev1.port", 
                     "system.accel.ctrl_port"
                 ], 
                 "role": "MASTER"
@@ -54,6 +55,34 @@
         }, 
         "accel_vaddr": 538968064, 
         "symbolfile": "", 
+        "vdev1": {
+            "delay_remained": 1000000, 
+            "delay_self": 1000000, 
+            "name": "vdev1", 
+            "is_interruptable": false, 
+            "delay_set": 2200000, 
+            "need_log": true, 
+            "clk_domain": "system.clk_domain", 
+            "port": {
+                "peer": "system.membus.master[2]", 
+                "role": "SLAVE"
+            }, 
+            "delay_cpu_interrupt": 20000, 
+            "energy_consumed_per_cycle_vdev": [
+                0.0, 
+                0.06, 
+                0.6, 
+                1.35
+            ], 
+            "delay_recover": 920000, 
+            "range": "537919488:537919488", 
+            "eventq_index": 0, 
+            "cxx_class": "VirtualDevice", 
+            "id": 1, 
+            "path": "system.vdev1", 
+            "type": "VirtualDevice", 
+            "cpu": "system.cpu"
+        }, 
         "readfile": "", 
         "cxx_class": "System", 
         "load_offset": 0, 
@@ -120,27 +149,27 @@
             "delay_self": 1000000, 
             "name": "vdev0", 
             "is_interruptable": false, 
-            "delay_set": 2200000, 
+            "delay_set": 0, 
             "need_log": true, 
             "clk_domain": "system.clk_domain", 
             "port": {
                 "peer": "system.membus.master[1]", 
                 "role": "SLAVE"
             }, 
-            "delay_cpu_interrupt": 20000, 
+            "delay_cpu_interrupt": 1000000, 
             "energy_consumed_per_cycle_vdev": [
                 0.0, 
-                0.06, 
-                0.6, 
-                1.35
+                0.0, 
+                0.0, 
+                0.0
             ], 
-            "delay_recover": 920000, 
+            "delay_recover": 0, 
             "range": "536870912:536870912", 
             "eventq_index": 0, 
-            "cxx_class": "VirtualDevice", 
+            "cxx_class": "MeasureUnit", 
             "id": 0, 
             "path": "system.vdev0", 
-            "type": "VirtualDevice", 
+            "type": "MeasureUnit", 
             "cpu": "system.cpu"
         }, 
         "eventq_index": 0, 
@@ -270,7 +299,7 @@
             "delay_cpu_interrupt": 100000, 
             "eventq_index": 0, 
             "ctrl_port": {
-                "peer": "system.membus.master[2]", 
+                "peer": "system.membus.master[3]", 
                 "role": "SLAVE"
             }, 
             "cxx_class": "Accelerator", 

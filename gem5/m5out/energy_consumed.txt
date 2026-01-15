@@ -1,4 +1,3 @@
-Accelerator: 50514.5
-EnergyMgmt (consumed): 219657
-EnergyMgmt (harvested): 2.14106e+06
-VirtualDevice: 52150.9
+Accelerator: 5449
+EnergyMgmt (consumed): 133077
+VirtualDevice: 51489

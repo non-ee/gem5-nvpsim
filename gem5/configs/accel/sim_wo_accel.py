@@ -8,6 +8,14 @@ if os.path.exists("m5out/devicedata"):
 if os.path.exists("m5out/power_failure"):
 	os.remove("m5out/power_failure")
 
+if os.path.exists("m5out/energy_consumed.txt"):
+	os.remove("m5out/energy_consumed.txt")
+
+if os.path.exists("m5out/ticks_output.txt"):
+	os.remove("m5out/ticks_output.txt")
+
+if os.path.exists("m5out/powerfailure_report"):
+	os.remove("m5out/powerfailure_report")
 
 import sys
 cap = float(sys.argv[1])
@@ -85,29 +93,39 @@ system.vaddr_vdev_ranges = [
     AddrRange('1001MB', '1001MB')
 ]
 
+# Virtual device 2 : MeasureUnit
+system.vdev0 = MeasureUnit(
+    id = 0,
+    cpu = system.cpu,
+    range = system.vdev_ranges[0],
+    port = system.membus.master,
+    energy_consumed_per_cycle_vdev = [Float(0), Float(0), Float(0), Float(0)],
+    need_log = 1
+)
+
 # Virtual device #0
-system.vdev0 = VirtualDevice()
-system.vdev0.id = 0;
-system.vdev0.cpu = system.cpu
+system.vdev1 = VirtualDevice()
+system.vdev1.id = 1
+system.vdev1.cpu = system.cpu
 # Access address range for the device
-system.vdev0.range = system.vdev_ranges[0]
+system.vdev1.range = system.vdev_ranges[1]
 # The energy consumption of each cycle at power-off, idle and active mode.
-system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6), Float(1.35)]
+system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6), Float(1.35)]
 # Delay of an active task
-system.vdev0.delay_self = '1ms'
+system.vdev1.delay_self = '1ms'
 # Delay of the task returning interrupt
-system.vdev0.delay_cpu_interrupt = '20us'
+system.vdev1.delay_cpu_interrupt = '20us'
 # Initialization delay
-system.vdev0.delay_set = '2200us'
+system.vdev1.delay_set = '2200us'
 # Recovering delay :: ToRemove
-system.vdev0.delay_recover = '920us'
+system.vdev1.delay_recover = '920us'
 # The device is volatile (is_interruptable = 0)
-system.vdev0.is_interruptable = 0
+system.vdev1.is_interruptable = 0
 # Function and energy interface to connect to the system bus
-system.vdev0.port = system.membus.master
-system.vdev0.s_energy_port = system.energy_mgmt.m_energy_port
+system.vdev1.port = system.membus.master
+system.vdev1.s_energy_port = system.energy_mgmt.m_energy_port
 # Generate log file of this device
-system.vdev0.need_log = 1
+system.vdev1.need_log = 1
 
 ###################################
 ###########  Benchmark  ############

@@ -9,9 +9,10 @@
 #include <stdint.h>
 
 
-#define TMP_SENSOR_ID	0
-#define ACC_SENSOR_ID	1
-#define RF_ID			2
+#define MEASURE_UNIT_ID	0
+#define TMP_SENSOR_ID	1
+#define ACC_SENSOR_ID	2
+#define RF_ID			3
 
 #define VDEV_INIT		0x80
 #define VDEV_EXEC		0x40
@@ -31,7 +32,7 @@ void	periInit(uint8_t *cmd_reg);
 void	tmpSense(uint8_t *tmp, uint8_t *cmd_reg);
 void	accSense(int *x, int *y, int *z, uint8_t *cmd_reg);
 
-void	rfTrans(uint8_t *cmd_reg, uint8_t *payload);
+void	rfTrans(uint8_t *cmd_reg);
 void	generalVdevActive(uint8_t *cmd_reg);
 
 #endif

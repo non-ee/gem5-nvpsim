@@ -51,6 +51,7 @@
 #include "cpu/simple/base.hh"
 #include "params/AtomicSimpleCPU.hh"
 #include "sim/probe/probe.hh"
+#include <functional>
 
 class AtomicSimpleCPU : public BaseSimpleCPU
 {
@@ -90,7 +91,7 @@ public:
 	virtual int handleMsg(const EnergyMsg &msg);
 
 	/* Virtual device related functions */
-	virtual void virtualDeviceInterrupt(char* vdev_name, Tick tick);
+	virtual void virtualDeviceInterrupt(char* vdev_name, Tick tick, std::function<void()> cb);
 	virtual void virtualDeviceRecover(char* vdev_name, Tick delay_vdev_init);
 	virtual int initVdevByCPU(int vdev_id);
 

@@ -14,7 +14,6 @@ void sensing_task() {
     periRegister(TMP_SENSOR_ID, &tmp_reg);
 
     for (int i = 0; i < COUNT; i++) {
-        periInit(tmp_reg);
         tmpSense(&tmp, tmp_reg);
         src_array[i] = tmp;
         DelayMS(10);
@@ -47,6 +46,7 @@ void heavy_compute() {
 
         dst_array[i] = x;
     }
+
 }
 
 
@@ -56,13 +56,22 @@ void display_output() {
 
 int main() {
 
-    sensing_task();
+    uint8_t *measure_reg;
+    periRegister(MEASURE_UNIT_ID, &measure_reg);
 
+    *measure_reg = 0x1;
+    sensing_task();
+    *measure_reg = 0x2;
+
+    *measure_reg = 0x1;
     pre_compute();
     heavy_compute();
     post_compute();
+    *measure_reg = 0x2;
 
     display_output();
+
+    periLogout(MEASURE_UNIT_ID);
 
     return 0;
 }

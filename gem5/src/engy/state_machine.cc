@@ -5,6 +5,8 @@
 
 #include "engy/state_machine.hh"
 #include "debug/EnergyMgmt.hh"
+#include "debug/SimpleEnergySM.hh"
+#include "debug/MeasureUnit.hh"
 #include <fstream>
 
 /******* BaseEnergySM *******/
@@ -28,7 +30,27 @@ SimpleEnergySM::SimpleEnergySM(const Params *p) :
 {
 	// when the system cannot consume energy
 	energy_consume_lower_bound = thres_1_to_off;
+
+	// Initialize variables for outage latency tracking
+	outage_start_tick = 0;
+	total_charging_time = 0;
+	in_outage = false;
+
+	/* register end-of simulation callback */
+    registerExitCallback(
+        new MakeCallback<SimpleEnergySM, &SimpleEnergySM::onSimulationExit>(this)
+    );
+
 }
+
+void
+SimpleEnergySM::onSimulationExit(){
+    // Write total simulation ticks to file
+    std::ofstream fout("m5out/ticks_output.txt", std::ios::app);
+    fout << "Total charging ticks: " << total_charging_time << std::endl;
+    fout.close();
+}
+
 
 void
 SimpleEnergySM::init()
@@ -45,6 +67,17 @@ SimpleEnergySM::init()
 	assert(fout);
 	fout << outage_times << std::endl;
 	fout.close();
+
+	//
+	in_outage = true;
+	outage_start_tick = curTick();
+	total_charging_time = 0;
+	fout.open("m5out/powerfailure_report", std::ios::app);
+	assert(fout);
+	fout << "Start tick: " << outage_start_tick << std::endl;
+	fout.close();
+
+	DPRINTF(MeasureUnit, "Initialized SimpleEnergySM. Charging time: %lu\n", total_charging_time);
 }
 
 void SimpleEnergySM::update(double _energy)
@@ -55,9 +88,13 @@ void SimpleEnergySM::update(double _energy)
 	// power failure
 	if (state == STATE_POWER_ON && _energy <= thres_1_to_off)
 	{
+		DPRINTF(EnergyMgmt, "[SimpleEnergySM] State change: POWER_ON->POWER_OFF, energy=%lf, thres=%lf.\n", _energy, thres_1_to_off);
+		DPRINTF(MeasureUnit, "Power failure detected.\n");
 		state = State::STATE_POWER_OFF;
 		msg.type = MsgType::POWER_OFF;
-		DPRINTF(EnergyMgmt, "[SimpleEngySM] State change: POWER_ON->POWER_OFF, energy=%lf, thres=%lf.\n", _energy, thres_1_to_off);
+
+		// record outage start time
+		outage_start_tick = curTick();
 
 		// Calculate Power failure times
 		outage_times++;
@@ -73,9 +110,14 @@ void SimpleEnergySM::update(double _energy)
 	// power recovery
 	else if (state == State::STATE_POWER_OFF && _energy >= thres_off_to_1)
 	{
+		DPRINTF(EnergyMgmt, "[SimpleEnergySM] State change: POWER_OFF->POWER_ON, energy=%lf, thres=%lf.\n", _energy, thres_off_to_1);
 		state = State::STATE_POWER_ON;
 		msg.type = MsgType::POWER_ON;
-		DPRINTF(EnergyMgmt, "[SimpleEngySM] State change: POWER_OFF->POWER_ON, energy=%lf, thres=%lf.\n", _energy, thres_off_to_1);
+
+		Tick outage_latency = curTick() - outage_start_tick;
+  		total_charging_time += outage_latency;
+        DPRINTF(MeasureUnit, "Power recovery detected. Charging time: %lu\n", outage_latency);
+
 		broadcastMsg(msg);
 	}
 }

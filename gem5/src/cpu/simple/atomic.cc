@@ -668,7 +668,7 @@ AtomicSimpleCPU::printAddr(Addr a)
 /****** Virtual Device Related Functions *******/
 // Interrupt reaction for vdev
 void
-AtomicSimpleCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_isa)
+AtomicSimpleCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_isa, std::function<void()> cb)
 {
     DPRINTF(VirtualDevice, "%s calls INT, latency = %#lu\n", vdev_name, delay_isa);
 
@@ -690,19 +690,16 @@ AtomicSimpleCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_isa)
     if (time <= curTick())
         time = curTick() + clockPeriod();
 
-    DPRINTF(VirtualDevice, "%s: scheduling CPU tickEvent: scheduled=%d base_when=%llu delay=%llu -> time=%llu cur=%llu\n",
-            vdev_name, tickEvent.scheduled(),
-            (unsigned long long)base_when,
-            (unsigned long long)delay_isa,
-            (unsigned long long)time,
-            (unsigned long long)curTick());
-
     if (tickEvent.scheduled()) {
         // event exists already — move it
         reschedule(tickEvent, time);
     } else {
         // event not scheduled — create it
         schedule(tickEvent, time);
+    }
+
+    if (cb) {
+        cb();
     }
 }
 

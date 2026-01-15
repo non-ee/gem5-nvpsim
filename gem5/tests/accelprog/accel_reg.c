@@ -51,6 +51,5 @@ void accel_set_addr(uint64_t src_addr, uint64_t dst_addr, uint32_t count) {
 
 void accel_start() {
     *cmd_reg = (uint8_t)START;
-
     while (!(*cmd_reg == (uint8_t)DONE));
 }

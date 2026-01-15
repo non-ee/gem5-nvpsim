@@ -43,7 +43,6 @@ void EnergyMgmt::onSimulationExit() {
     std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
     assert(fout);
     fout << "EnergyMgmt (consumed): " << total_energy_consumed << std::endl;
-    fout << "EnergyMgmt (harvested): " << total_energy_harvested << std::endl;
     fout.close();
 }
 

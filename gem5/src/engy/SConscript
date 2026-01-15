@@ -21,3 +21,4 @@ SimObject('DVFSSM.py')
 SimObject('DFS_LRY.py')
 
 DebugFlag('EnergyMgmt')
+DebugFlag('SimpleEnergySM')
