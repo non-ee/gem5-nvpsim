@@ -7,12 +7,12 @@ rm m5out/batch_res.csv
 #build/ARM/gem5.debug configs/example/test_engy_vdev.py $cap $energy
 #build/ARM/gem5.debug --debug-flag=VirtualDevice,EnergyMgmt --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2
 
-count=20
+count=10
 perf_boost=1
 cap=10
 energy=6
 
-W_ACCEL=0
+W_ACCEL=1
 
 arg_prog=""
 
@@ -28,7 +28,7 @@ script="configs/accel/sim_${arg_prog}.py"
 sed -i "s/#define COUNT .*/#define COUNT ${count}/" tests/accelprog/${prog}.c
 make ${prog} -C tests/accelprog/ W_ACCEL=$W_ACCEL
 
-FLAG=--debug-flag=VirtualDevice,Accelerator
+FLAG=--debug-flag=VirtualDevice,Accelerator,MeasureUnit
 
 echo "========================================================="
 echo "cap: $cap; energy: $energy"

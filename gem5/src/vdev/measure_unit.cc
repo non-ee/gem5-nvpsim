@@ -46,8 +46,7 @@ MeasureUnit::access(PacketPtr pkt)
                 // start_energy = EnergyObject::getEnergyRemained();
 
                 DPRINTF(MeasureUnit,
-                    "[MeasureUnit] START tick=%llu energy=%lf\n",
-                    (unsigned long long)start_tick,
+                    "[MeasureUnit] START measure. energy=%lf\n",
                     start_energy);
             }
 
@@ -62,19 +61,12 @@ MeasureUnit::access(PacketPtr pkt)
                     measuring = false;
 
                     DPRINTF(MeasureUnit,
-                        "[MeasureUnit] END latency=%llu ticks energy=%lf\n",
+                        "[MeasureUnit] END measure. LAT = %llu ticks energy = %lf\n",
                         (unsigned long long)latency,
                         energy);
                 }
             }
         }
-        else if (offset == 0x00100000) {
-            DPRINTF(MeasureUnit, "[MeasureUnit] Temp sensor accessed!");
-        }
-        else if (offset == 0x00200000) {
-            DPRINTF(MeasureUnit, "[MeasureUnit] Voltage sensor accessed!");
-        }
-
 
         pkt->makeResponse();
         return 0;

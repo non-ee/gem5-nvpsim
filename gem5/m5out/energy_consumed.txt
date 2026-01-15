@@ -1,2 +1,0 @@
-EnergyMgmt (consumed): 177624
-VirtualDevice: 66369.6
