@@ -12,7 +12,7 @@ perf_boost=1
 cap=10
 energy=6
 
-W_ACCEL=1
+W_ACCEL=0
 
 arg_prog=""
 
@@ -28,7 +28,7 @@ script="configs/accel/sim_${arg_prog}.py"
 sed -i "s/#define COUNT .*/#define COUNT ${count}/" tests/accelprog/${prog}.c
 make ${prog} -C tests/accelprog/ W_ACCEL=$W_ACCEL
 
-FLAG=--debug-flag=MeasureUnit,Accelerator
+FLAG=--debug-flag=VirtualDevice,Accelerator
 
 echo "========================================================="
 echo "cap: $cap; energy: $energy"

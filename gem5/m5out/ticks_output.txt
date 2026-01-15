@@ -1,5 +1,1 @@
-Total simulation ticks: 163677000
-Accelerator (total_ticks): 1098000
-Total charging ticks: 98037000
-VirtualDevice (total ticks): 20000000
-VirtualDevice (total abort): 6600000
+Total charging ticks: 87282000

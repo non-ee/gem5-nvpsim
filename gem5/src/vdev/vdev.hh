@@ -119,9 +119,6 @@ public:
 	bool recvTimingReq(PacketPtr pkt);
 	void recvRespRetry();
 
-	/*+ End of simulation **/
-	virtual void onSimulationExit();
-
 	/** Vdev Energy State related parameters **/
 	/* Three states are defined as energy modes, that are:
 	 	power-off 	: totally fail, execution state = raw;
@@ -175,21 +172,14 @@ protected:
 
 	/** Energy consumption of the vdev **/
 	double total_energy_consumed = 0;
-	Tick sensing_start = 0;
-	Tick total_ticks = 0;
-	Tick total_abort_time = 0;
 
-	int count = 0;
-
+	virtual void onSimulationExit();
 
 	/** The normal/init interrupt event scheduled by vdev **/
 	EventWrapper<VirtualDevice, &VirtualDevice::triggerInterrupt> event_interrupt;
 	EventWrapper<VirtualDevice, &VirtualDevice::triggerInterrupt> event_init;
 	/** Tell whether the task is successful */
 	virtual bool finishSuccess();
-
-	/** Clear up execution on finish **/
-	virtual void onFinish();
 	/** Implement of memories and registers for the vdev. */
 	uint8_t *pmem;
 

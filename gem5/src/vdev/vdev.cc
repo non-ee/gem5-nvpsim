@@ -18,7 +18,6 @@
 #include "debug/EnergyMgmt.hh"
 #include "debug/VirtualDevice.hh"
 #include "debug/MemoryAccess.hh"
-#include "debug/MeasureUnit.hh"
 
 #include <fstream>
 
@@ -139,12 +138,6 @@ VirtualDevice::onSimulationExit()
     assert(fout);
     fout << "VirtualDevice: " << total_energy_consumed << std::endl;
     fout.close();
-
-    fout.open("m5out/ticks_output.txt", std::ios::app);
-    assert(fout);
-    fout << "VirtualDevice (total ticks): " << total_ticks << std::endl;
-    fout << "VirtualDevice (total abort): " << total_abort_time << std::endl;
-    fout.close();
 }
 
 void
@@ -185,7 +178,7 @@ VirtualDevice::triggerInterrupt()
 		DPRINTF(VirtualDevice, "%s: Already initialized.\n", dev_name);
 		*pmem |= VDEV_READY;
 		*pmem &= ~VDEV_CHAOS;
-		cpu->virtualDeviceInterrupt(dev_name, 0, NULL);
+		cpu->virtualDeviceInterrupt(dev_name, 0);
 		cpu->virtualDeviceEnd(id);
 
 		// Todo: these are external added codes, which should be added in extension parts.
@@ -210,9 +203,8 @@ VirtualDevice::triggerInterrupt()
 		// if delay_remained > 0, means that, the completed task is a recovered actuation.
 		delay_remained = 0;
 
-		cpu->virtualDeviceInterrupt(dev_name, delay_cpu_interrupt, [this](){onFinish();});
+		cpu->virtualDeviceInterrupt(dev_name, delay_cpu_interrupt);
 		cpu->virtualDeviceEnd(id);
-
 	}
 
 	// finishSuccess();
@@ -223,6 +215,7 @@ Tick
 VirtualDevice::access(PacketPtr pkt)
 {
 	/* Todo: what if the cpu ask to work on a task when the vdev is busy? **/
+	DPRINTF(MemoryAccess, "Virtual Device accessed at %#lx.\n", pkt->getAddr());
 	Addr offset = pkt->getAddr() - range.start();
 
 	if (pkt->isRead()) {
@@ -233,22 +226,14 @@ VirtualDevice::access(PacketPtr pkt)
 		const uint8_t* pkt_addr = pkt->getConstPtr<uint8_t>();
 		if (offset == 0) {
 			/* offset = 0, the address is in the cmd byte */
-
-			// Record sensing start time
-			count++;
-			sensing_start = curTick();
-
 			/* Initialization */
 			if (*pkt_addr & VDEV_INIT) {
 				if (*pmem & VDEV_BUSY) {
 					/* Request fails because the vdev is working. */
-					DPRINTF(VirtualDevice, "Initialization failed:State BUSY! Request discarded!\n");
+					DPRINTF(VirtualDevice, "State BUSY! Request discarded at initialization!\n");
 				} else {
 					// Vdev enters/keeps ACTIVE to complete the initialization
 					vdev_energy_state = VdevEngyState::STATE_NORMAL;
-
-					count--;
-					DPRINTF(MeasureUnit, "%d sensing: initialization started. Need LAT = %i\n", count, delay_set);
 
 					/* Set the virtual device to working mode */
 					*pmem |= VDEV_BUSY;
@@ -266,21 +251,16 @@ VirtualDevice::access(PacketPtr pkt)
 
 			/* Activation. */
 			else if (*pkt_addr & VDEV_ACTIVATE) {
-    			DPRINTF(VirtualDevice, "Access activate: *pmem = %x\n", *pmem);
 				if (*pmem & VDEV_CHAOS) {
 					/* virtual device not enabled before initialization */
-					DPRINTF(VirtualDevice, "Activation failed: Not initialized! Request discarded!\n");
+					DPRINTF(VirtualDevice, "VirtualDevice not initialized! Request discarded at activation!\n");
 				}
 				else if (*pmem & VDEV_BUSY) {
 					/* Request fails because the vdev is working. */
-					DPRINTF(VirtualDevice, "Activation failed: State BUSY! Request discarded!\n");
-				}
-				else {
-				    DPRINTF(VirtualDevice, "VirtualDevice activation started\n");
+					DPRINTF(VirtualDevice, "State BUSY! Request discarded at activation!\n");
+				} else {
 					/* Request succeeds. */
 					vdev_energy_state = VdevEngyState::STATE_ACTIVE; // The virtual device enter/keep in the active status.
-
-					DPRINTF(MeasureUnit, "%d sensing: activation started. Need LAT = %i\n", count, delay_self);
 
 					/* 统计设备访问次数 */
 					if (need_log)
@@ -346,8 +326,6 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 	// Power-off: the device fails
 	if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
 	{
-
-	    DPRINTF(VirtualDevice, "Virtual Device power off\n");
 		// Set energy state
 		vdev_energy_state = VdevEngyState::STATE_POWER_OFF;
 
@@ -414,10 +392,8 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 
                 DPRINTF(VirtualDevice, "%s: WARNING: expected interrupt event not scheduled when powering off. curTick=%llu\n",
                         dev_name, (unsigned long long)curTick());
-                DPRINTF(MeasureUnit, "%s: WARNING: expected interrupt event not scheduled when powering off. curTick=%llu\n",
-                        dev_name, (unsigned long long)curTick());
             }
-  		}
+      		}
 
 		// Reset vdev to be uninitialized.
 		*pmem |= VDEV_CHAOS;
@@ -436,18 +412,12 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 		{
 			// start an re-initialization
 			schedule(event_init, curTick() + delay_set);
-			total_abort_time += delay_set;
-
 			// Set energy state
 			vdev_energy_state = VdevEngyState::STATE_NORMAL;
 			// Set vdev state
 			*pmem |= VDEV_BUSY;
 			// Initialization
 			DPRINTF(VirtualDevice, "%s: Recover-Initialization, Need Ticks: %i, Energy: %lf.\n",
-				dev_name, delay_set,
-				energy_consumed_per_cycle_vdev[VdevEngyState::STATE_NORMAL] * ticksToCycles(delay_set)
-			);
-			DPRINTF(MeasureUnit, "%s: Recover-Initialization, Need Ticks: %i, Energy: %lf.\n",
 				dev_name, delay_set,
 				energy_consumed_per_cycle_vdev[VdevEngyState::STATE_NORMAL] * ticksToCycles(delay_set)
 			);
@@ -525,20 +495,6 @@ VirtualDevice::finishSuccess()
 {
 	/* Todo: Need further implementation. */
 	return 1;
-}
-
-void
-VirtualDevice::onFinish()
-{
-	// Record sensing latency
-	Tick sensing_latency = curTick() - sensing_start;
-	total_ticks += sensing_latency;
-
-	*pmem &= ~VDEV_INIT;
-	*pmem &= ~VDEV_BUSY;
-
-	DPRINTF(VirtualDevice, "Total ticks for %d sensing: %i\n", count, total_ticks);
-	DPRINTF(MeasureUnit, "%d sensing: finished with latency = %i\n", count, sensing_latency);
 }
 
 VirtualDevice *

@@ -29,9 +29,7 @@ enum AccelState {
     DMA_WRITE = 4,
     COMPUTE = 5,
     CPU_INT = 6,
-    DONE = 7,
-    NOP = 8,
-    RECOVERY = 9
+    DONE = 7
 };
 
 class Accelerator : public MemObject, public DmaCallBack, public ComputeCallBack
@@ -118,8 +116,6 @@ protected:
 
     /** Energy consumption report**/
     double total_energy_consumed;
-    Tick total_ticks;
-    Tick total_poweroff_ticks;
 
     void onSimulationExit();
 

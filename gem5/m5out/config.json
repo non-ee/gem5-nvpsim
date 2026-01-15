@@ -5,21 +5,6 @@
         "kernel": "", 
         "mmap_using_noreserve": false, 
         "kernel_addr_check": true, 
-        "dma_ctrl": {
-            "name": "dma_ctrl", 
-            "clk_domain": "system.clk_domain", 
-            "energy_per_tx": [
-                0.0, 
-                0.2, 
-                1.0
-            ], 
-            "bandwidth": 10, 
-            "eventq_index": 0, 
-            "cxx_class": "DmaCtrl", 
-            "path": "system.dma_ctrl", 
-            "type": "DmaCtrl", 
-            "cpu": "system.cpu"
-        }, 
         "membus": {
             "slave": {
                 "peer": [
@@ -40,8 +25,7 @@
                 "peer": [
                     "system.mem_ctrl.port", 
                     "system.vdev0.port", 
-                    "system.vdev1.port", 
-                    "system.accel.ctrl_port"
+                    "system.vdev1.port"
                 ], 
                 "role": "MASTER"
             }, 
@@ -106,7 +90,7 @@
                 "name": "harvest_module", 
                 "cxx_class": "SimpleHarvester"
             }, 
-            "path_energy_profile": "profile/solar_new_30000.txt", 
+            "path_energy_profile": "profile/solar_new_60000.txt", 
             "energy_profile_mult": 0.03, 
             "eventq_index": 0, 
             "cxx_class": "EnergyMgmt", 
@@ -275,38 +259,6 @@
             "IDD3P12": "0.0", 
             "tREFI": 7800
         }, 
-        "accel": {
-            "compute_unit": {
-                "latency": 10000000, 
-                "name": "compute_unit", 
-                "eventq_index": 0, 
-                "cxx_class": "SimpleComputeUnit", 
-                "path": "system.accel.compute_unit", 
-                "type": "SimpleComputeUnit"
-            }, 
-            "count": 0, 
-            "energy_per_cycle": [
-                0.0, 
-                0.5, 
-                5.0
-            ], 
-            "control_range": "1073741824:1075838975", 
-            "name": "accel", 
-            "dma_ctrl": "system.dma_ctrl", 
-            "delay_init": 100000, 
-            "clk_domain": "system.clk_domain", 
-            "delay_compute": 10000000, 
-            "delay_cpu_interrupt": 100000, 
-            "eventq_index": 0, 
-            "ctrl_port": {
-                "peer": "system.membus.master[3]", 
-                "role": "SLAVE"
-            }, 
-            "cxx_class": "Accelerator", 
-            "path": "system.accel", 
-            "type": "Accelerator", 
-            "cpu": "system.cpu"
-        }, 
         "work_cpus_ckpt_count": 0, 
         "work_begin_exit_count": 0, 
         "vdev_ranges": [
@@ -314,7 +266,7 @@
             "537919488:537919488"
         ], 
         "path": "system", 
-        "accel_range": "1073741824:1075838975", 
+        "accel_range": "0:0", 
         "mem_mode": "atomic", 
         "name": "system", 
         "init_param": 0, 

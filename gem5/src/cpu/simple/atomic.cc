@@ -668,7 +668,7 @@ AtomicSimpleCPU::printAddr(Addr a)
 /****** Virtual Device Related Functions *******/
 // Interrupt reaction for vdev
 void
-AtomicSimpleCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_isa, std::function<void()> cb)
+AtomicSimpleCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_isa)
 {
     DPRINTF(VirtualDevice, "%s calls INT, latency = %#lu\n", vdev_name, delay_isa);
 
@@ -696,10 +696,6 @@ AtomicSimpleCPU::virtualDeviceInterrupt(char* vdev_name, Tick delay_isa, std::fu
     } else {
         // event not scheduled — create it
         schedule(tickEvent, time);
-    }
-
-    if (cb) {
-        cb();
     }
 }
 
@@ -733,14 +729,33 @@ AtomicSimpleCPU::initVdevByCPU(int vdev_id)
 void
 AtomicSimpleCPU::accelInterrupt(Tick delay_isa)
 {
-	//in_interrupt = 1;
-	DPRINTF(Accelerator, "Accelerator calls INT, latency = %#lu\n", delay_isa);
+    DPRINTF(Accelerator, "Accelerator calls INT, latency = %#lu\n", delay_isa);
 
-	Tick time = tickEvent.when();
-	if (delay_isa % clockPeriod())
-		delay_isa += clockPeriod() - delay_isa % clockPeriod();
-	time += delay_isa;
-	reschedule(tickEvent, time);
+    // align delay to clockPeriod
+    if (delay_isa % clockPeriod())
+        delay_isa += clockPeriod() - delay_isa % clockPeriod();
+
+    // compute a safe base time
+    Tick base_when = curTick();
+    if (tickEvent.scheduled()) {
+        Tick w = tickEvent.when();
+        // use the later of event.when() and curTick()
+        base_when = (w > curTick()) ? w : curTick();
+    }
+
+    Tick time = base_when + delay_isa;
+
+    // ensure time is in the future by at least one clockPeriod
+    if (time <= curTick())
+        time = curTick() + clockPeriod();
+
+    if (tickEvent.scheduled()) {
+        // event exists already — move it
+        reschedule(tickEvent, time);
+    } else {
+        // event not scheduled — create it
+        schedule(tickEvent, time);
+    }
 }
 
 /****** Energy Message Handler *******/

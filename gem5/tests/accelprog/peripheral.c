@@ -21,10 +21,6 @@ periInit(uint8_t *cmd_reg){
 void
 tmpSense(uint8_t *tmp, uint8_t *cmd_reg){
     // Check if the device is ready
-    if (!(*cmd_reg & VDEV_READY)){
-        periInit(cmd_reg);
-    }
-
 	*cmd_reg = VDEV_EXEC;
 	while(!(*cmd_reg & VDEV_FINISH));
 	*tmp = 12;

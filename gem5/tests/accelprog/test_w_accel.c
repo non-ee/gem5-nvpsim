@@ -14,7 +14,7 @@ void sensing_task() {
     uint8_t *tmp_reg;
 
     periRegister(TMP_SENSOR_ID, &tmp_reg);
-    // periInit(tmp_reg);
+    periInit(tmp_reg);
 
     for (int i = 0; i < COUNT; i++) {
         tmpSense(&tmp, tmp_reg);
