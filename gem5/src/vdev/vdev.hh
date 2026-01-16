@@ -171,7 +171,9 @@ protected:
 	VdevEngyState vdev_energy_state;
 
 	/** Energy consumption of the vdev **/
-	double total_energy_consumed = 0;
+	bool inTask;
+	double total_energy_consumed;
+	Tick total_tick;
 
 	virtual void onSimulationExit();
 

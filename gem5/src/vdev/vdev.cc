@@ -112,6 +112,10 @@ VirtualDevice::VirtualDevice(const Params *p) :
 	// delay_remained is zeros at the beginning
 	delay_remained = 0;
 
+	inTask = false;
+	total_energy_consumed = 0;
+	total_tick = 0;
+
 	// the energy consumption of each cycle defines the cost of three modes (OFF, SLEEP, NORMAL, ACTIVE)
 	energy_consumed_per_cycle_vdev[0] = p->energy_consumed_per_cycle_vdev[0];
 	energy_consumed_per_cycle_vdev[1] = p->energy_consumed_per_cycle_vdev[1];
@@ -137,6 +141,10 @@ VirtualDevice::onSimulationExit()
     std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
     assert(fout);
     fout << "VirtualDevice: " << total_energy_consumed << std::endl;
+    fout.close();
+
+    fout.open("m5out/ticks_output.txt", std::ios::app);
+    fout << "VirtualDevice: " << total_tick << std::endl;
     fout.close();
 }
 
@@ -199,6 +207,7 @@ VirtualDevice::triggerInterrupt()
 	// Actuation operation return
 	} else {
 		DPRINTF(VirtualDevice, "%s: Completed the task.\n", dev_name);
+		inTask = false;
 
 		// if delay_remained > 0, means that, the completed task is a recovered actuation.
 		delay_remained = 0;
@@ -234,6 +243,7 @@ VirtualDevice::access(PacketPtr pkt)
 				} else {
 					// Vdev enters/keeps ACTIVE to complete the initialization
 					vdev_energy_state = VdevEngyState::STATE_NORMAL;
+	                inTask = true;
 
 					/* Set the virtual device to working mode */
 					*pmem |= VDEV_BUSY;
@@ -261,6 +271,7 @@ VirtualDevice::access(PacketPtr pkt)
 				} else {
 					/* Request succeeds. */
 					vdev_energy_state = VdevEngyState::STATE_ACTIVE; // The virtual device enter/keep in the active status.
+					inTask = true;
 
 					/* 统计设备访问次数 */
 					if (need_log)
@@ -284,7 +295,8 @@ VirtualDevice::access(PacketPtr pkt)
 					);
 					cpu->virtualDeviceStart(id);
 				}
-			} else {
+			}
+		    else {
 				/* Not a request, but the first byte cannot be written. */
 			}
 		} else {
@@ -311,6 +323,13 @@ VirtualDevice::tick()
 	// scheduler the next vdev::tickEvent to EventQueue
 	DPRINTF(EnergyMgmt, "Virtual Device consumed %f energy\n", EngyConsume);
 	schedule(tickEvent, curTick() + latency);
+
+	if (inTask) {
+		if (vdev_energy_state == VdevEngyState::STATE_ACTIVE ||
+			vdev_energy_state == VdevEngyState::STATE_NORMAL) {
+			total_tick += latency;
+		}
+	}
 }
 
 // Todo: the handler is also related to peri. model.
@@ -382,7 +401,8 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
                 DPRINTF(VirtualDevice, "%s: descheduled interrupt (when=%llu cur=%llu) delay_remained=%llu\n",
                         dev_name, (unsigned long long)when, (unsigned long long)curTick(),
                         (unsigned long long)delay_remained);
-            } else {
+            }
+            else {
                 // event not scheduled — handle gracefully
                 need_recover = true;
 
@@ -408,8 +428,7 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 	else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
 	{
 		// EXTENTION: User defined Recover Procedure
-		if ( need_recover )
-		{
+		if ( need_recover ) {
 			// start an re-initialization
 			schedule(event_init, curTick() + delay_set);
 			// Set energy state
@@ -430,8 +449,7 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 			cpu->virtualDeviceStart(id);
 		}
 
-		else
-		{
+		else {
 			*pmem &= ~VDEV_BUSY;
 		}
 	}

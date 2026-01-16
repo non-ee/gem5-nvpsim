@@ -111,7 +111,7 @@ system.vdev1.id = 1
 system.vdev1.cpu = system.cpu
 # Access address range for the device
 system.vdev1.range = system.vdev_ranges[1]
-# The energy consumption of each cycle at power-off, idle and active mode.
+# The energy consumption of each cycle at power-off, idle, normal, active mode.
 system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6), Float(1.35)]
 # Delay of an active task
 system.vdev1.delay_self = '1ms'

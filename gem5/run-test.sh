@@ -28,8 +28,8 @@ script="configs/accel/sim_${arg_prog}.py"
 sed -i "s/#define COUNT .*/#define COUNT ${count}/" tests/accelprog/${prog}.c
 make ${prog} -C tests/accelprog/ W_ACCEL=$W_ACCEL
 
-# FLAG=--debug-flag=VirtualDevice,Accelerator,MeasureUnit
-FLAG=--debug-flag=Accelerator,MeasureUnit
+FLAG=--debug-flag=VirtualDevice,Accelerator
+# FLAG=--debug-flag=Accelerator,MeasureUnit
 
 echo "========================================================="
 echo "cap: $cap; energy: $energy"
