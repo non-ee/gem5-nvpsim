@@ -69,9 +69,9 @@ int main() {
     accel_map_registers();
 #endif
 
-    *measure_reg = 0x1;
+    *measure_reg = 0x1;     // start measuring
     sensing_task();
-    *measure_reg = 0x2;
+    *measure_reg = 0x2;     // end
 
     *measure_reg = 0x1;
     pre_compute();

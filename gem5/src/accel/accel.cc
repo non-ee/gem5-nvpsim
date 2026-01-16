@@ -41,33 +41,26 @@ void Accelerator::fsmStep()
             break;
         case INIT:
             doInit();
-            state = IDLE;
             break;
         case DMA_READ:
             doDmaRead();
-            state = IDLE;
             break;
         case DMA_WRITE:
             doDmaWrite();
-            state = IDLE;
             break;
         case COMPUTE:
             doCompute();
-            state = IDLE;
             break;
         case CPU_INT:
             triggerInterrupt();
             break;
         case DONE:
-            finishSuccess();
             break;
     }
 }
 
 void Accelerator::tick()
 {
-    if (busy) fsmStep();
-
     Tick latency = clockPeriod();
     double EngyConsume = energy_per_cycle[energy_state] * ticksToCycles(latency);
     EnergyObject::consumeEnergy(accel_name, EngyConsume);
@@ -75,6 +68,9 @@ void Accelerator::tick()
 
     DPRINTF(EnergyMgmt, "Accelerator consumed %f energy\n", EngyConsume);
     schedule(tickEvent, curTick() + latency);
+
+    if (inTask && !busy)
+        fsmStep();
 }
 
 /* ---------------- CtrlPort implementation ---------------- */
@@ -149,6 +145,7 @@ Accelerator::Accelerator(const Params *p) :
 
     state = IDLE;
     busy = false;
+    inTask = false;
 
     input_buffer = nullptr;
     output_buffer = nullptr;
@@ -220,6 +217,7 @@ void Accelerator::onDmaReadDone()
 {
     // Handle DMA read completion
     DPRINTF(Accelerator, "DMA read done...\n");
+    busy = false;
     state = COMPUTE;
 }
 
@@ -227,6 +225,7 @@ void Accelerator::onDmaWriteDone()
 {
     // Handle DMA write completion
     DPRINTF(Accelerator, "DMA write done...\n");
+    busy = false;
     state = CPU_INT;
 }
 
@@ -234,13 +233,13 @@ void Accelerator::onDmaWriteDone()
 void Accelerator::onComputeDone()
 {
     DPRINTF(Accelerator, "Compute done...\n");
+    busy = false;
     state = DMA_WRITE;
 }
 
 void Accelerator::onComputeAbort()
 {
     DPRINTF(Accelerator, "Compute failed...\n");
-    state = IDLE;
 }
 
 /** Initialize the accelerator */
@@ -251,12 +250,14 @@ void Accelerator::initDone()
     output_buffer = new uint8_t[count];
 
     DPRINTF(Accelerator, "Initialization done\n");
+    busy = false;
     state = DMA_READ;
 }
 
 void Accelerator::doInit()
 {
     DPRINTF(Accelerator, "Scheduling initialization event\n");
+    busy = true;
     energy_state = STATE_ON;
     schedule(event_init, curTick() + delay_init);
 }
@@ -264,6 +265,7 @@ void Accelerator::doInit()
 void Accelerator::doDmaRead()
 {
     DPRINTF(Accelerator, "Scheduling DMA read ...\n");
+    busy = true;
     energy_state = STATE_IDLE;
 
     if (!dmaCtrl) {
@@ -283,6 +285,7 @@ void Accelerator::doDmaRead()
 void Accelerator::doDmaWrite()
 {
     DPRINTF(Accelerator, "Scheduling DMA write ...\n");
+    busy = true;
     energy_state = STATE_IDLE;
 
     if (!dmaCtrl) {
@@ -302,6 +305,7 @@ void Accelerator::doDmaWrite()
 void Accelerator::doCompute()
 {
     DPRINTF(Accelerator, "Compute started...\n");
+    busy = true;
     energy_state = STATE_ON;
     computeUnit->start(
         input_buffer,
@@ -314,6 +318,7 @@ void Accelerator::doCompute()
 void Accelerator::abortCompute()
 {
     DPRINTF(Accelerator, "Compute aborted...\n");
+    busy = true;
     computeUnit->abort();
 }
 
@@ -337,13 +342,17 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
                     if (!busy)
                     {
                         DPRINTF(Accelerator, "INIT received: scheduling initialization\n");
-                        busy = true;
+                        inTask = true;
                         state = INIT;
                     }
                     else
                     {
                         DPRINTF(Accelerator, "%s: START requested but busy\n", name());
                     }
+                }
+                else if (state == IDLE)
+                {
+                    finishSuccess();
                 }
                 break;
             }
@@ -411,7 +420,7 @@ AddrRange Accelerator::getAddrRanges() const
 /** handle energy manager messages (optional) **/
 int Accelerator::handleMsg(const EnergyMsg &msg)
 {
-    if (!busy) return 1;
+    if (!inTask) return 1;
 
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF)
     {
@@ -421,6 +430,7 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
+        DPRINTF(Accelerator, "Powering on ...\n");
         energy_state = STATE_IDLE;
         handleRecovery();
     }
@@ -434,37 +444,46 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 
 void Accelerator::handleInterrupt()
 {
-    DPRINTF(Accelerator, "Accelerator: handles interrupt\n");
     if (state == INIT) {
-        if (event_init.scheduled())
+        if (event_init.scheduled()) {
+            DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
             deschedule(event_init);
+        }
     }
-    else if (state == COMPUTE)
+    else if (state == COMPUTE) {
+        DPRINTF(Accelerator, "Accelerator: abort compute\n");
         abortCompute();
+    }
 }
 
 void Accelerator::handleRecovery()
 {
     DPRINTF(Accelerator, "Accelerator: handles recovery\n");
-    if (state == INIT)
+    if (state == INIT) {
+        DPRINTF(Accelerator, "Accelerator: reschedule event_init\n");
         doInit();
-    else if (state == COMPUTE)
+    }
+    else if (state == COMPUTE) {
+        DPRINTF(Accelerator, "Accelerator: redo compute\n");
         doCompute();
+    }
 }
 
 /** triggerInterrupt: stub to notify CPU - adjust to your system's API */
 void Accelerator::triggerInterrupt()
 {
     DPRINTF(Accelerator, "Accelerator: triggers an interrupt to CPU\n");
+    busy = true;
+    state = DONE;
     energy_state = STATE_IDLE;
     cpu->accelInterrupt(delay_cpu_interrupt);
-    state = DONE;
 }
 
 void Accelerator::finishSuccess()
 {
     DPRINTF(Accelerator, "Finished successfully\n");
     busy = false;
+    inTask = false;
     energy_state = STATE_OFF;
 }
 

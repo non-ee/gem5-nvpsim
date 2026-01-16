@@ -77,7 +77,7 @@ SimpleEnergySM::init()
 	fout << "Start tick: " << outage_start_tick << std::endl;
 	fout.close();
 
-	DPRINTF(MeasureUnit, "Initialized SimpleEnergySM. Charging time: %lu\n", total_charging_time);
+	DPRINTF(MeasureUnit, "[MeasureUnit] Initialized SimpleEnergySM. Charging time: %lu\n", total_charging_time);
 }
 
 void SimpleEnergySM::update(double _energy)
@@ -89,7 +89,7 @@ void SimpleEnergySM::update(double _energy)
 	if (state == STATE_POWER_ON && _energy <= thres_1_to_off)
 	{
 		DPRINTF(EnergyMgmt, "[SimpleEnergySM] State change: POWER_ON->POWER_OFF, energy=%lf, thres=%lf.\n", _energy, thres_1_to_off);
-		DPRINTF(MeasureUnit, "Power failure detected.\n");
+		DPRINTF(MeasureUnit, "[MeasureUnit] Power failure detected.\n");
 		state = State::STATE_POWER_OFF;
 		msg.type = MsgType::POWER_OFF;
 
@@ -116,7 +116,7 @@ void SimpleEnergySM::update(double _energy)
 
 		Tick outage_latency = curTick() - outage_start_tick;
   		total_charging_time += outage_latency;
-        DPRINTF(MeasureUnit, "Power recovery detected. Charging time: %lu\n", outage_latency);
+        DPRINTF(MeasureUnit, "[MeasureUnit] Power recovery detected. Charging time: %lu\n", outage_latency);
 
 		broadcastMsg(msg);
 	}

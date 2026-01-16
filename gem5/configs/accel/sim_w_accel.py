@@ -95,7 +95,7 @@ system.vaddr_vdev_ranges = [
 ]
 
 
-# Virtual device 2 : MeasureUnit
+# Virtual device 0 : MeasureUnit
 system.vdev0 = MeasureUnit(
     id = 0,
     cpu = system.cpu,
@@ -105,7 +105,7 @@ system.vdev0 = MeasureUnit(
     need_log = 1
 )
 
-# Virtual device #0
+# Virtual device 1
 system.vdev1 = VirtualDevice()
 system.vdev1.id = 1
 system.vdev1.cpu = system.cpu
@@ -151,7 +151,7 @@ total_tick = count * compute_tick_per_count / perf_boost
 
 system.accel = Accelerator()
 system.accel.cpu = system.cpu
-system.accel.compute_unit = SimpleComputeUnit(latency="10ms")
+system.accel.compute_unit = SimpleComputeUnit(latency="5ms")
 system.accel.dma_ctrl = system.dma_ctrl
 system.accel.s_energy_port = system.energy_mgmt.m_energy_port
 system.accel.ctrl_port = system.membus.master
@@ -161,7 +161,7 @@ system.accel.control_range = system.accel_range
 
 system.accel.delay_init = '100us'
 system.accel.delay_cpu_interrupt = '100us'
-system.accel.energy_per_cycle = [Float(0.0), Float(0.5), Float(5.0)]
+system.accel.energy_per_cycle = [Float(0.0), Float(0.5), Float(3.0)]
 
 ###################################
 ###########  Benchmark  ############

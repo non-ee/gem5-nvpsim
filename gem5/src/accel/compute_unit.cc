@@ -1,5 +1,6 @@
 #include "accel/compute_unit.hh"
 #include "compute_unit.hh"
+#include "debug/ComputeUnit.hh"
 
 /** BaseComputeUnit **/
 BaseComputeUnit::BaseComputeUnit(const Params *p)
@@ -32,11 +33,13 @@ void SimpleComputeUnit::start(uint8_t* input, uint8_t* output, uint32_t size, Co
     this->size = size;
     this->cb = cb;
 
+    DPRINTF(ComputeUnit, "[ComputeUnit] scheduling computation.Need LAT = %i\n", latency);
     schedule(event_compute, curTick() + latency);
 }
 
 void SimpleComputeUnit::compute()
 {
+    DPRINTF(ComputeUnit, "[ComputeUnit] Performing computation...\n");
     // Implement compute logic here
     for (uint32_t i = 0; i < size; i++) {
         uint32_t x = input[i];
@@ -47,12 +50,15 @@ void SimpleComputeUnit::compute()
         output[i] = x;
     }
 
-    if (cb)
+    if (cb) {
+        DPRINTF(ComputeUnit, "[ComputeUnit] Calling callback...\n");
         cb->onComputeDone();
+    }
 }
 
 void SimpleComputeUnit::abort()
 {
+    DPRINTF(ComputeUnit, "[ComputeUnit] aborting computation...\n");
     // Implement abort logic here
     if (event_compute.scheduled()) {
         deschedule(event_compute);

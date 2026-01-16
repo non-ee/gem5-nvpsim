@@ -113,6 +113,7 @@ protected:
     uint32_t count;     // number of elements
     AccelState state;
     bool busy;
+    bool inTask;
 
     /** Energy consumption report**/
     double total_energy_consumed;
