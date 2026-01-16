@@ -16,6 +16,7 @@
 
 #define VDEV_INIT		0x80
 #define VDEV_EXEC		0x40
+#define VDEV_TURNOFF    0x20
 #define VDEV_READY	    0x04
 #define VDEV_FINISH 	0x01
 
@@ -28,6 +29,7 @@ static void * PERI_ADDR[3] = {
 void	periRegister(int peri_id, uint8_t **reg_file);
 void	periLogout(int peri_id);
 void	periInit(uint8_t *cmd_reg);
+void    periTurnOff(uint8_t *cmd_reg);
 
 void	tmpSense(uint8_t *tmp, uint8_t *cmd_reg);
 void	accSense(int *x, int *y, int *z, uint8_t *cmd_reg);

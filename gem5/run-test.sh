@@ -9,7 +9,7 @@ rm m5out/batch_res.csv
 
 count=10
 perf_boost=1
-cap=10
+cap=20
 energy=6
 
 W_ACCEL=1

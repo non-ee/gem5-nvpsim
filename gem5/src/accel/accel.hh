@@ -20,18 +20,6 @@ enum AccelEnergyState {
     STATE_ON = 2
 };
 
-/** Accelerator state **/
-enum AccelState {
-    IDLE = 0,
-    START = 1,
-    INIT = 2,
-    DMA_READ = 3,
-    DMA_WRITE = 4,
-    COMPUTE = 5,
-    CPU_INT = 6,
-    DONE = 7
-};
-
 class Accelerator : public MemObject, public DmaCallBack, public ComputeCallBack
 {
     private:
@@ -96,6 +84,18 @@ public:
     /** Called by EnergyMgr (optional). Return 1 on handled. */
     int handleMsg(const EnergyMsg &msg);
 
+    static const uint8_t ACCEL_IDLE = 0;
+    static const uint8_t ACCEL_INIT = 1;
+    static const uint8_t ACCEL_DMA_READ = 2;
+    static const uint8_t ACCEL_DMA_WRITE = 3;
+    static const uint8_t ACCEL_COMPUTE = 4;
+    static const uint8_t ACCEL_INTERRUPT = 5;
+    static const uint8_t CMD_MASK = 0x07;
+
+    static const uint8_t INIT_BIT = (1 << 4);
+    static const uint8_t BUSY_BIT = (1 << 5);
+
+
 protected:
     /** CPU / system references */
     BaseCPU* cpu;
@@ -111,12 +111,12 @@ protected:
     Addr src_addr;      // source buffer in system memory
     Addr dst_addr;      // destination buffer in system memory
     uint32_t count;     // number of elements
-    AccelState state;
-    bool busy;
-    bool inTask;
+
+    uint8_t cmd;
 
     /** Energy consumption report**/
     double total_energy_consumed;
+    Tick total_tick;
 
     void onSimulationExit();
 
@@ -127,9 +127,11 @@ protected:
     double energy_per_cycle[3] = {0.0, 0.2, 2.0};
     AccelEnergyState energy_state;
 
+    /** Cmd manipulation **/
+    void setCmd(uint8_t accel_cmd);
+
     /** Operation routines */
     void initDone();
-
     void doInit();
     void doDmaRead();
     void doDmaWrite();

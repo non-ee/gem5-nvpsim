@@ -296,6 +296,17 @@ VirtualDevice::access(PacketPtr pkt)
 					cpu->virtualDeviceStart(id);
 				}
 			}
+			/* Turn off */
+			else if (*pkt_addr & VDEV_DEACTIVATE) {
+                *pmem |= VDEV_CHAOS;
+                *pmem &= ~VDEV_READY;
+                *pmem &= ~VDEV_BUSY;
+                *pmem &= ~VDEV_IDLE;
+
+                vdev_energy_state = VdevEngyState::STATE_POWER_OFF;
+                inTask = false;
+                DPRINTF(VirtualDevice, "%s: Turn off.\n", dev_name);
+ 			}
 		    else {
 				/* Not a request, but the first byte cannot be written. */
 			}
@@ -427,6 +438,9 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 	// Power-on: the device is power-on but not ready
 	else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
 	{
+	    if (!inTask)
+			return 1;
+
 		// EXTENTION: User defined Recover Procedure
 		if ( need_recover ) {
 			// start an re-initialization

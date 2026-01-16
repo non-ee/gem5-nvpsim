@@ -19,6 +19,11 @@ periInit(uint8_t *cmd_reg){
 }
 
 void
+periTurnOff(uint8_t *cmd_reg){
+    *cmd_reg = VDEV_TURNOFF;
+}
+
+void
 tmpSense(uint8_t *tmp, uint8_t *cmd_reg){
     // Check if the device is ready
     if (!(*cmd_reg & VDEV_READY)) {

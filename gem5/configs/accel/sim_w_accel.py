@@ -139,7 +139,7 @@ system.dma_ctrl.s_energy_port = system.energy_mgmt.m_energy_port
 system.dma_ctrl.bandwidth = 10
 
 # Energy for [OFF, READ, WRITE]
-system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(1.0)]
+system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(5.0)]
 
 ###################################
 ###########  Accelerator  ############
@@ -161,7 +161,7 @@ system.accel.control_range = system.accel_range
 
 system.accel.delay_init = '100us'
 system.accel.delay_cpu_interrupt = '100us'
-system.accel.energy_per_cycle = [Float(0.0), Float(0.5), Float(3.0)]
+system.accel.energy_per_cycle = [Float(0.0), Float(0.5), Float(2.0)]
 
 ###################################
 ###########  Benchmark  ############

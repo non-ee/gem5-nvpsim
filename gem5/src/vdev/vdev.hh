@@ -97,6 +97,8 @@ public:
 	*/
 	static const uint8_t VDEV_INIT		= 0x80;         // 0b10000000;
 	static const uint8_t VDEV_ACTIVATE	= 0x40;         // 0b01000000;
+	static const uint8_t VDEV_DEACTIVATE= 0x20;         // 0b00100000;
+
 	static const uint8_t VDEV_CHAOS		= 0x08;         // 0b00001000;
 	static const uint8_t VDEV_READY		= 0x04;         // 0b00000100;
 	static const uint8_t VDEV_BUSY		= 0x02;         // 0b00000010;

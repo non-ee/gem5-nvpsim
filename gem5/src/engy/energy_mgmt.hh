@@ -43,6 +43,7 @@ protected:
     double capacity;
 
     double total_energy_consumed;
+    double total_cpu_consumed;
     double total_energy_harvested;
 
     void onSimulationExit();

@@ -11,25 +11,18 @@
 #define ACCEL_DST_REG 0x10
 #define ACCEL_COUNT_REG 0x18
 
-#define SRC_PA 0x90000000
-#define DST_PA 0x90001000
+#define CMD_FINISH 0x00
+#define CMD_INIT 0x01
+#define CMD_DMA_READ 0x02
+#define CMD_DMA_WRITE 0x03
+#define CMD_COMPUTE 0x04
+#define CMD_INTERRUPT 0x05
 
 extern uint8_t *accel;
 extern uint8_t *cmd_reg;
 extern uint64_t *src_reg;
 extern uint64_t *dst_reg;
 
-
-enum AccelState {
-    IDLE = 0,
-    START = 1,
-    INIT = 2,
-    DMA_READ = 3,
-    DMA_WRITE = 4,
-    COMPUTE = 5,
-    CPU_INT = 6,
-    DONE = 7
-};
 
 void accel_map_registers();
 void accel_unmap_registers();

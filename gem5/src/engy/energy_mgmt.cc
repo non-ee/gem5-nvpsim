@@ -31,6 +31,7 @@ EnergyMgmt::EnergyMgmt(const Params *p)
     msg_togo.resize(0);
 
     total_energy_consumed = 0;
+    total_cpu_consumed = 0;
     total_energy_harvested = 0;
 
     /* register end-of-simulation callback */
@@ -43,6 +44,7 @@ void EnergyMgmt::onSimulationExit() {
     std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
     assert(fout);
     fout << "EnergyMgmt (consumed): " << total_energy_consumed << std::endl;
+    fout << "AtomicCPU: " << total_cpu_consumed << std::endl;
     fout.close();
 }
 
@@ -89,10 +91,11 @@ EnergyMgmt::consumeEnergy(char *sender, double val)
         }
         if (strcmp(sender, "AtomicCPU")==0) {
             DPRINTF(EnergyMgmt, "Energy %lf is consumed by %s. Energy remained: %lf\n", cons_unit, sender, energy_remained);
+            total_cpu_consumed += cons_unit;
         }
 
         // Update total energy consumed and harvested
-        total_energy_consumed += val;
+        total_energy_consumed += cons_unit;
     }
 
     // Energy Harvesting, if val < 0

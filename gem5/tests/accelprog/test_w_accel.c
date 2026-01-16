@@ -22,6 +22,8 @@ void sensing_task() {
         DelayMS(10);
     }
 
+    periTurnOff(tmp_reg);
+
     periLogout(TMP_SENSOR_ID);
 }
 
