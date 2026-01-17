@@ -1,5 +1,4 @@
 #include "accel/accel.hh"
-#include "accel.hh"
 #include "debug/Accelerator.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/MemoryAccess.hh"
@@ -11,7 +10,6 @@
 #include <cstdlib>
 #include <ctime>
 #include <fstream>
-#include <set>
 #include <stdint.h>
 #include <unistd.h>
 
@@ -35,6 +33,7 @@ const char *Accelerator::TickEvent::description() const
 
 void Accelerator::fsmStep()
 {
+    cmd |= BUSY_BIT;
     uint8_t accel_op = cmd & CMD_MASK;
     switch (accel_op)
     {
@@ -269,7 +268,6 @@ void Accelerator::initDone()
 void Accelerator::doInit()
 {
     DPRINTF(Accelerator, "Scheduling initialization event\n");
-    cmd |= BUSY_BIT;
     energy_state = STATE_ON;
     schedule(event_init, curTick() + delay_init);
 }
@@ -277,7 +275,6 @@ void Accelerator::doInit()
 void Accelerator::doDmaRead()
 {
     DPRINTF(Accelerator, "Scheduling DMA read ...\n");
-    cmd |= BUSY_BIT;
     energy_state = STATE_IDLE;
 
     if (!dmaCtrl) {
@@ -297,7 +294,6 @@ void Accelerator::doDmaRead()
 void Accelerator::doDmaWrite()
 {
     DPRINTF(Accelerator, "Scheduling DMA write ...\n");
-    cmd |= BUSY_BIT;
     energy_state = STATE_IDLE;
 
     if (!dmaCtrl) {
@@ -317,7 +313,6 @@ void Accelerator::doDmaWrite()
 void Accelerator::doCompute()
 {
     DPRINTF(Accelerator, "Compute started...\n");
-    cmd |= BUSY_BIT;
     energy_state = STATE_ON;
     computeUnit->start(
         input_buffer,
