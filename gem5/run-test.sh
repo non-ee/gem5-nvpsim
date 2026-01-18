@@ -28,10 +28,10 @@ script="configs/accel/sim_${arg_prog}.py"
 sed -i "s/#define COUNT .*/#define COUNT ${count}/" tests/accelprog/${prog}.c
 make ${prog} -C tests/accelprog/ W_ACCEL=$W_ACCEL
 
-FLAG=--debug-flag=VirtualDevice,Accelerator
+FLAG=--debug-flag=Accelerator
 # FLAG=--debug-flag=Accelerator,MeasureUnit
 
 echo "========================================================="
 echo "cap: $cap; energy: $energy"
-build/ARM/gem5.debug $FLAG $script $cap $energy $prog $count $perf_boost
+build/ARM/gem5.debug $FLAG $script $cap $energy $prog $count $W_ACCEL
 # build/ARM/gem5.debug --debug-flag=VirtualDevice --debug-file=virtual_device.o configs/example/sim_exp_br.py $cap $energy -j2

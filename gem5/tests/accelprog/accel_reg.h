@@ -11,12 +11,13 @@
 #define ACCEL_DST_REG 0x10
 #define ACCEL_COUNT_REG 0x18
 
-#define CMD_FINISH 0x00
 #define CMD_INIT 0x01
 #define CMD_DMA_READ 0x02
 #define CMD_DMA_WRITE 0x03
 #define CMD_COMPUTE 0x04
 #define CMD_INTERRUPT 0x05
+
+#define CMD_DONE_BIT (1 << 6)
 
 extern uint8_t *accel;
 extern uint8_t *cmd_reg;

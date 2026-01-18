@@ -10,6 +10,7 @@
 #include "params/Accelerator.hh"
 #include "cpu/base.hh"
 #include <cstdint>
+#include <stdint.h>
 #include <string>
 #include "base/types.hh"
 
@@ -94,6 +95,7 @@ public:
 
     static const uint8_t INIT_BIT = (1 << 4);
     static const uint8_t BUSY_BIT = (1 << 5);
+    static const uint8_t DONE_BIT = (1 << 6);
 
 
 protected:
@@ -131,12 +133,12 @@ protected:
     void setCmd(uint8_t accel_cmd);
 
     /** Operation routines */
-    void initDone();
+    void triggerInterrupt();
     void doInit();
     void doDmaRead();
     void doDmaWrite();
     void doCompute();
-    void triggerInterrupt();
+    void doInterrupt();
     void finishSuccess();
     void abortCompute();
 
@@ -144,7 +146,7 @@ protected:
     void handleRecovery();
 
     /** Event scheduled when computation finishes */
-    EventWrapper<Accelerator, &Accelerator::initDone> event_init;
+    EventWrapper<Accelerator, &Accelerator::triggerInterrupt> event_interrupt;
 };
 
 #endif // GEM5_ACCEL_HH
