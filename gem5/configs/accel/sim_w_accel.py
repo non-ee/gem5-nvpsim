@@ -131,7 +131,7 @@ system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(5.0)]
 ###########  Accelerator  ############
 system.accel = Accelerator()
 system.accel.cpu = system.cpu
-system.accel.compute_unit = SimpleComputeUnit(latency="5ms")
+system.accel.compute_unit = SimpleComputeUnit(latency="6ms")
 system.accel.dma_ctrl = system.dma_ctrl
 system.accel.s_energy_port = system.energy_mgmt.m_energy_port
 system.accel.ctrl_port = system.membus.master

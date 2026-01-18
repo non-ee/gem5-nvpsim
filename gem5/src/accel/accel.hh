@@ -85,6 +85,8 @@ public:
     /** Called by EnergyMgr (optional). Return 1 on handled. */
     int handleMsg(const EnergyMsg &msg);
 
+    void triggerInterrupt();
+
     static const uint8_t ACCEL_IDLE = 0;
     static const uint8_t ACCEL_INIT = 1;
     static const uint8_t ACCEL_DMA_READ = 2;
@@ -133,7 +135,6 @@ protected:
     void setCmd(uint8_t accel_cmd);
 
     /** Operation routines */
-    void triggerInterrupt();
     void doInit();
     void doDmaRead();
     void doDmaWrite();

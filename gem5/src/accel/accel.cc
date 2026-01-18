@@ -166,22 +166,10 @@ Accelerator::Accelerator(const Params *p) :
 
 Accelerator::~Accelerator()
 {
-    if (computeUnit)
-    {
-        delete computeUnit;
-        computeUnit = nullptr;
-    }
+    computeUnit = nullptr;
 
-    if (input_buffer)
-    {
-        delete[] input_buffer;
-        input_buffer = nullptr;
-    }
-    if (output_buffer)
-    {
-        delete[] output_buffer;
-        output_buffer = nullptr;
-    }
+    delete[] input_buffer;
+    delete[] output_buffer;
 }
 
 void Accelerator::onSimulationExit()
@@ -207,9 +195,6 @@ void Accelerator::init()
     DPRINTF(Accelerator, "%s connected master energy port: %s\n",
         name(), getMasterEnergyPort().owner->name());
 
-    /* Initialize any necessary resources or state */
-    input_buffer = new uint8_t[count];
-    output_buffer = new uint8_t[count];
 
     cmd &= ~INIT_BIT;
     cmd &= ~BUSY_BIT;
@@ -267,6 +252,10 @@ void Accelerator::doInit()
 {
     DPRINTF(Accelerator, "Scheduling initialization event\n");
     energy_state = STATE_ON;
+
+    /* Initialize any necessary resources or state */
+    input_buffer = new uint8_t[count];
+    output_buffer = new uint8_t[count];
     schedule(event_interrupt, curTick() + delay_init);
 }
 
@@ -393,7 +382,7 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
         {
         case 0x00:
             ret = cmd;
-            DPRINTF(Accelerator, "CPU read. cmd = %x\n", cmd);
+            // DPRINTF(Accelerator, "CPU read. cmd = %x\n", cmd);
             break;
 
         default:
