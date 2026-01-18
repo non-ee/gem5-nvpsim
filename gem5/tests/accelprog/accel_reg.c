@@ -51,5 +51,7 @@ void accel_set_addr(uint64_t src_addr, uint64_t dst_addr, uint32_t count) {
 
 void accel_start() {
     *cmd_reg = CMD_INIT;
+    // while (!((*cmd_reg & CMD_DONE_BIT) == 0x50));
     while (!(*cmd_reg & CMD_DONE_BIT));
+    printf("Testing program Finish\n");
 }
