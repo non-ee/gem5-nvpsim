@@ -22,14 +22,15 @@ class BaseComputeUnit : public SimObject {
         BaseComputeUnit(const Params *p);
         virtual ~BaseComputeUnit() = default;
         virtual void init() {}
-        virtual void start(uint8_t* input, uint8_t* output, uint32_t size, ComputeCallBack* cb) {}
+        virtual void start(uint8_t* input, uint8_t* output, uint32_t input_count, uint32_t output_count, ComputeCallBack* cb) {}
         virtual void compute() {}
         virtual void abort() {}
 
     protected:
         uint8_t* input;
         uint8_t* output;
-        uint32_t size;
+        uint32_t input_count;
+        uint32_t output_count;
         ComputeCallBack* cb;
 };
 
@@ -43,7 +44,7 @@ class SimpleComputeUnit : public BaseComputeUnit {
         SimpleComputeUnit(const Params *p);
         virtual ~SimpleComputeUnit() = default;
         virtual void init();
-        virtual void start(uint8_t* input, uint8_t* output, uint32_t size, ComputeCallBack* cb);
+        virtual void start(uint8_t* input, uint8_t* output, uint32_t input_count, uint32_t output_count, ComputeCallBack* cb);
         virtual void compute();
         virtual void abort();
 

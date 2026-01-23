@@ -9,10 +9,8 @@
 #include <stdint.h>
 
 
-#define MEASURE_UNIT_ID	0
-#define TMP_SENSOR_ID	1
-#define ACC_SENSOR_ID	2
-#define RF_ID			3
+#define TMP_SENSOR_ID	0
+#define RF_ID			1
 
 #define VDEV_INIT		0x80
 #define VDEV_EXEC		0x40

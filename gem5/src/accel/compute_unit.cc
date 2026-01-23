@@ -8,7 +8,8 @@ BaseComputeUnit::BaseComputeUnit(const Params *p)
 {
     input = nullptr;
     output = nullptr;
-    size = 0;
+    input_count = 0;
+    output_count = 0;
     cb = nullptr;
 }
 
@@ -25,12 +26,13 @@ void SimpleComputeUnit::init()
     // Implement init logic here
 }
 
-void SimpleComputeUnit::start(uint8_t* input, uint8_t* output, uint32_t size, ComputeCallBack* cb)
+void SimpleComputeUnit::start(uint8_t* input, uint8_t* output, uint32_t input_count, uint32_t output_count, ComputeCallBack* cb)
 {
     // Implement start logic here
     this->input = input;
     this->output = output;
-    this->size = size;
+    this->input_count = input_count;
+    this->output_count = output_count;
     this->cb = cb;
 
     DPRINTF(ComputeUnit, "[ComputeUnit] scheduling computation.Need LAT = %i\n", latency);
@@ -41,7 +43,7 @@ void SimpleComputeUnit::compute()
 {
     DPRINTF(ComputeUnit, "[ComputeUnit] Performing computation...\n");
     // Implement compute logic here
-    for (uint32_t i = 0; i < size; i++) {
+    for (uint32_t i = 0; i < input_count; i++) {
         uint32_t x = input[i];
 
         for (uint32_t j = 0; j < 100; j++)

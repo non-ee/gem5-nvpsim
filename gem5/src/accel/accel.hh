@@ -99,7 +99,6 @@ public:
     static const uint8_t BUSY_BIT = (1 << 5);
     static const uint8_t DONE_BIT = (1 << 6);
 
-
 protected:
     /** CPU / system references */
     BaseCPU* cpu;
@@ -114,7 +113,8 @@ protected:
     /** Control registers (MMIO) */
     Addr src_addr;      // source buffer in system memory
     Addr dst_addr;      // destination buffer in system memory
-    uint32_t count;     // number of elements
+    uint32_t input_count;     // number of elements
+    uint32_t output_count;
 
     uint8_t cmd;
 

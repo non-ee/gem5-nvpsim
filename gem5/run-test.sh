@@ -29,7 +29,6 @@ sed -i "s/#define COUNT .*/#define COUNT ${count}/" tests/accelprog/${prog}.c
 make ${prog} -C tests/accelprog/ W_ACCEL=$W_ACCEL
 
 FLAG=--debug-flag=Accelerator
-# FLAG=--debug-flag=Accelerator,MeasureUnit
 
 echo "========================================================="
 echo "cap: $cap; energy: $energy"

@@ -1,4 +1,3 @@
-#include "accel_reg.h"
 #include "delay.h"
 #include "peripheral.h"
 #include <stdint.h>
@@ -40,9 +39,20 @@ void post_compute() {
     dst_array[0] = checksum & 0xFF;
 }
 
+void post_processing() {
+    uint8_t *rf_reg;
+
+    periRegister(RF_ID, &rf_reg);
+    periInit(rf_reg);
+
+    rfTrans(rf_reg);
+
+    periLogout(RF_ID);
+}
+
 void heavy_compute() {
 #ifdef W_ACCEL
-    accel_set_addr((uint64_t)src_array, (uint64_t)dst_array, COUNT);
+    accel_set_addr((uint64_t)src_array, (uint64_t)dst_array, COUNT, COUNT);
     accel_start();
 #else
     for (int i = 0; i < COUNT; i++) {
@@ -64,9 +74,6 @@ void display_output() {
 
 int main() {
 
-    uint8_t *measure_reg;
-    periRegister(MEASURE_UNIT_ID, &measure_reg);
-
 #ifdef W_ACCEL
     accel_map_registers();
 #endif
@@ -83,7 +90,7 @@ int main() {
     accel_unmap_registers();
 #endif
 
-    periLogout(MEASURE_UNIT_ID);
+    post_processing();
 
     return 0;
 }

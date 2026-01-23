@@ -149,7 +149,8 @@ Accelerator::Accelerator(const Params *p) :
 
     src_addr = 0;
     dst_addr = 0;
-    count = 0;
+    input_count = 0;
+    output_count = 0;
 
     cmd = 0;
 
@@ -254,8 +255,8 @@ void Accelerator::doInit()
     energy_state = STATE_ON;
 
     /* Initialize any necessary resources or state */
-    input_buffer = new uint8_t[count];
-    output_buffer = new uint8_t[count];
+    input_buffer = new uint8_t[input_count];
+    output_buffer = new uint8_t[output_count];
     schedule(event_interrupt, curTick() + delay_init);
 }
 
@@ -271,7 +272,7 @@ void Accelerator::doDmaRead()
     dmaCtrl->startRead(
         src_addr,
         input_buffer,
-        count,
+        input_count,
         [this]() {
             onDmaReadDone();
         }
@@ -290,7 +291,7 @@ void Accelerator::doDmaWrite()
     dmaCtrl->startWrite(
         dst_addr,
         output_buffer,
-        count,
+        output_count,
         [this]() {
             onDmaWriteDone();
         }
@@ -304,7 +305,8 @@ void Accelerator::doCompute()
     computeUnit->start(
         input_buffer,
         output_buffer,
-        count,
+        input_count,
+        output_count,
         this
     );
 }
@@ -367,7 +369,11 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
                 break;
 
             case 0x18: // COUNT
-                count = *(pkt->getConstPtr<uint32_t>());
+                input_count = *(pkt->getConstPtr<uint32_t>());
+                break;
+
+            case 0x20: // Output count
+                output_count = *(pkt->getConstPtr<uint32_t>());
                 break;
 
             default:

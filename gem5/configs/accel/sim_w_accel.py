@@ -96,11 +96,10 @@ system.vaddr_vdev_ranges = [
 
 
 # Virtual device 1
-system.vdev0 = VirtualDevice()
-system.vdev0.id = 0
+system.vdev0 = VirtualDevice(id=0)
 system.vdev0.cpu = system.cpu
 # Access address range for the device
-system.vdev0.range = system.vdev_ranges[1]
+system.vdev0.range = system.vdev_ranges[0]
 # The energy consumption of each cycle at power-off, idle, normal, active mode.
 system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6), Float(1.35)]
 # Delay of an active task
@@ -119,6 +118,21 @@ system.vdev0.s_energy_port = system.energy_mgmt.m_energy_port
 # Generate log file of this device
 system.vdev0.need_log = 1
 
+
+## Virtual Device 2: Transmitter
+system.vdev1 = VirtualDevice(id=1)
+system.vdev1.cpu = system.cpu
+system.vdev1.range = system.vdev_ranges[1]
+system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.24), Float(2.4), Float(11.9)]
+system.vdev1.delay_self = '1000us'
+system.vdev1.delay_cpu_interrupt = '10us'
+system.vdev1.delay_set = '66us'
+system.vdev1.delay_recover = '145us'
+system.vdev1.is_interruptable = 0
+system.vdev1.port = system.membus.master
+system.vdev1.s_energy_port = system.energy_mgmt.m_energy_port
+system.vdev1.need_log = 1
+
 ###########  DMA Controller  ############
 system.dma_ctrl = DmaCtrl()
 system.dma_ctrl.cpu = system.cpu
@@ -136,7 +150,7 @@ system.accel.dma_ctrl = system.dma_ctrl
 system.accel.s_energy_port = system.energy_mgmt.m_energy_port
 system.accel.ctrl_port = system.membus.master
 
-system.accel_range = AddrRange(0x40000000, size='2MB')
+system.accel_range = AddrRange(0x50000000, size='2MB')
 system.accel.control_range = system.accel_range
 
 system.accel.delay_init = '100us'
