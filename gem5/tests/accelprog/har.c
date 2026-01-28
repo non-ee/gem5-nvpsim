@@ -3,36 +3,79 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <math.h>
+#include <sys/types.h>
 
-#define SAMPLE_COUNT 10  // 10 seconds at 10Hz sampling
+// ==================== CONFIGURATION ====================
+#define SAMPLE_COUNT 20  // 10 seconds at 10Hz sampling
 #define ACCEL_DATA_DIM 3  // x, y, z axes
 #define WINDOW_SIZE 5     // For moving average
 #define THRESHOLD 1.5     // Step detection threshold
 
+#define ACCELEROMETER_ID 0
+#define RF_ID   1
+
 // Accelerometer data buffer: [sample_count][x,y,z]
-volatile uint8_t accel_data[SAMPLE_COUNT][ACCEL_DATA_DIM];
+volatile int16_t accel_data[SAMPLE_COUNT][ACCEL_DATA_DIM];
 volatile uint8_t activity_result[SAMPLE_COUNT];  // 1 if step detected, 0 otherwise
-uint32_t total_steps = 0;
+volatile uint32_t total_steps = 0;
 
 // Simple step counter variables
 volatile float magnitude_buffer[WINDOW_SIZE];
 volatile int buffer_index = 0;
 
+// Pre define
+void sensing_task();
+void generate_synthetic_data();
+void pre_compute();
+void heavy_compute();
+void post_compute();
+void display_output();
+void post_processing();
+
+int main() {
+#ifdef W_ACCEL
+    accel_map_registers();
+#endif
+
+    sensing_task();
+
+    // For simulation, generate synthetic accelerometer data
+    generate_synthetic_data();
+
+    pre_compute();
+    heavy_compute();
+    post_compute();
+
+    display_output();
+
+#ifdef W_ACCEL
+    accel_unmap_registers();
+#endif
+
+    post_processing();
+
+    return 0;
+}
+
 void sensing_task() {
     // Simulate accelerometer sensing (10Hz sampling for 10 seconds)
     uint8_t *accel_reg;
+    int16_t x, y, z;
 
     periRegister(ACCELEROMETER_ID, &accel_reg);
     periInit(accel_reg);
 
     for (int i = 0; i < SAMPLE_COUNT; i++) {
         // Read accelerometer values (simplified - in real HW, these would come from sensor)
-        accelRead((uint8_t*)accel_data[i],  accel_reg);
+        accelSense(&x, &y, &z, accel_reg);
+        accel_data[i][0] = x;
+        accel_data[i][1] = y;
+        accel_data[i][2] = z;
         // Simulate 3-axis accelerometer data
         // In a real system, these would be actual sensor readings
         // For simulation, we'll generate synthetic data later
 
-        DelayMS(100);  // 10Hz sampling
+        DelayMS(10);  // 10Hz sampling
     }
 
     periTurnOff(accel_reg);
@@ -164,33 +207,12 @@ void post_processing() {
     periRegister(RF_ID, &rf_reg);
     periInit(rf_reg);
 
-    // Transmit results
-    rfTransmitData(&total_steps, sizeof(total_steps), rf_reg);
+    // simple packet
+
+    for (int i = 0; i < 4; i++) {
+        rfTransmitByte(rf_reg, total_steps);
+        DelayMS(10);
+    }
 
     periLogout(RF_ID);
-}
-
-int main() {
-#ifdef W_ACCEL
-    accel_map_registers();
-#endif
-
-    sensing_task();
-
-    // For simulation, generate synthetic accelerometer data
-    generate_synthetic_data();
-
-    pre_compute();
-    heavy_compute();
-    post_compute();
-
-    display_output();
-
-#ifdef W_ACCEL
-    accel_unmap_registers();
-#endif
-
-    post_processing();
-
-    return 0;
 }
