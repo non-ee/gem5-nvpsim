@@ -6,59 +6,68 @@
 #include <sys/types.h>
 
 // ==================== CONFIGURATION ====================
-#define SAMPLE_COUNT 20  // 10 seconds at 10Hz sampling
-#define ACCEL_DATA_DIM 3  // x, y, z axes
-#define WINDOW_SIZE 5     // For moving average
-#define THRESHOLD 1.5     // Step detection threshold
+#define SAMPLE_COUNT 20          // 2 seconds at 10Hz sampling (since SAMPLE_COUNT=20)
+#define ACCEL_DATA_DIM 3         // x, y, z axes
+#define MOVING_AVG_WINDOW 5      // For moving average filter
+#define STEP_THRESHOLD 1.5       // Step detection threshold multiplier
+#define MIN_STEP_MAGNITUDE 1.2   // Minimum acceleration magnitude for step
 
 #define ACCELEROMETER_ID 0
 #define RF_ID   1
 
 // Accelerometer data buffer: [sample_count][x,y,z]
 volatile int16_t accel_data[SAMPLE_COUNT][ACCEL_DATA_DIM];
-volatile uint8_t activity_result[SAMPLE_COUNT];  // 1 if step detected, 0 otherwise
-volatile uint32_t total_steps = 0;
+volatile uint8_t step_detected[SAMPLE_COUNT];  // 1 if step detected, 0 otherwise
+volatile uint32_t step_count = 0;
 
-// Simple step counter variables
-volatile float magnitude_buffer[WINDOW_SIZE];
-volatile int buffer_index = 0;
+// Moving average filter variables
+volatile float magnitude_history[MOVING_AVG_WINDOW];
+volatile int history_index = 0;
 
-// Pre define
-void sensing_task();
-void generate_synthetic_data();
-void pre_compute();
-void heavy_compute();
-void post_compute();
-void display_output();
-void post_processing();
+// Function prototypes
+void har_sensing_phase();
+void har_generate_walking_pattern();
+void har_remove_gravity_bias();
+void har_detect_steps();
+void har_analyze_results();
+void har_display_statistics();
+void har_transmit_results();
 
 int main() {
 #ifdef W_ACCEL
     accel_map_registers();
 #endif
 
-    sensing_task();
+    printf("=== HAR System: Step Counting ===\n");
 
-    // For simulation, generate synthetic accelerometer data
-    generate_synthetic_data();
+    // Phase 1: Data Acquisition
+    har_sensing_phase();
 
-    pre_compute();
-    heavy_compute();
-    post_compute();
+    // Phase 2: Data Preparation
+    har_generate_walking_pattern();  // For simulation only
+    har_remove_gravity_bias();
 
-    display_output();
+    // Phase 3: Step Detection
+    har_detect_steps();
+
+    // Phase 4: Result Analysis
+    har_analyze_results();
+    har_display_statistics();
 
 #ifdef W_ACCEL
     accel_unmap_registers();
 #endif
 
-    post_processing();
+    // Phase 5: Communication
+    har_transmit_results();
 
+    printf("=== HAR System Complete ===\n");
     return 0;
 }
 
-void sensing_task() {
-    // Simulate accelerometer sensing (10Hz sampling for 10 seconds)
+// Phase 1: Data Acquisition
+void har_sensing_phase() {
+    printf("[HAR] Starting accelerometer sensing...\n");
     uint8_t *accel_reg;
     int16_t x, y, z;
 
@@ -66,24 +75,23 @@ void sensing_task() {
     periInit(accel_reg);
 
     for (int i = 0; i < SAMPLE_COUNT; i++) {
-        // Read accelerometer values (simplified - in real HW, these would come from sensor)
+        // Read accelerometer values
         accelSense(&x, &y, &z, accel_reg);
-        accel_data[i][0] = x;
-        accel_data[i][1] = y;
-        accel_data[i][2] = z;
-        // Simulate 3-axis accelerometer data
-        // In a real system, these would be actual sensor readings
-        // For simulation, we'll generate synthetic data later
+        accel_data[i][0] = x;  // X-axis
+        accel_data[i][1] = y;  // Y-axis
+        accel_data[i][2] = z;  // Z-axis (vertical)
 
-        DelayMS(10);  // 10Hz sampling
+        DelayMS(10);  // 10Hz sampling rate
     }
 
     periTurnOff(accel_reg);
     periLogout(ACCELEROMETER_ID);
+    printf("[HAR] Sensing complete: %d samples acquired\n", SAMPLE_COUNT);
 }
 
-void generate_synthetic_data() {
-    // Generate synthetic accelerometer data for simulation
+// Phase 2a: Generate synthetic walking data (for simulation only)
+void har_generate_walking_pattern() {
+    printf("[HAR] Generating walking pattern simulation...\n");
     // Simulates walking pattern: peaks every ~20 samples (~2 seconds between steps)
     for (int i = 0; i < SAMPLE_COUNT; i++) {
         // Base values with some noise
@@ -101,14 +109,15 @@ void generate_synthetic_data() {
         // Add some noise
         float noise = ((i % 10) - 5) * 0.2;
 
-        accel_data[i][0] = (int16_t)((base_x + noise) * 1000);  // Convert to fixed-point
+        accel_data[i][0] = (int16_t)((base_x + noise) * 1000);
         accel_data[i][1] = (int16_t)((base_y + noise * 0.5) * 1000);
         accel_data[i][2] = (int16_t)((base_z + noise * 0.3) * 1000);
     }
 }
 
-void pre_compute() {
-    // Optional: calibration or normalization
+// Phase 2b: Remove gravity bias
+void har_remove_gravity_bias() {
+    printf("[HAR] Removing gravity bias...\n");
     // Remove gravity bias from z-axis (assuming stationary start)
     float z_bias = accel_data[0][2] / 1000.0;  // First sample as baseline
 
@@ -118,18 +127,21 @@ void pre_compute() {
     }
 }
 
-void heavy_compute() {
+// Phase 3: Step detection algorithm
+void har_detect_steps() {
+    printf("[HAR] Detecting steps...\n");
+
 #ifdef W_ACCEL
-    // If using hardware accelerator
-    accel_set_addr((uint64_t)accel_data, (uint64_t)activity_result,
+    // Hardware accelerator path
+    accel_set_addr((uint64_t)accel_data, (uint64_t)step_detected,
                    SAMPLE_COUNT * ACCEL_DATA_DIM, SAMPLE_COUNT);
     accel_start();
 #else
     // Software implementation: Step detection algorithm
 
-    // Initialize magnitude buffer
-    for (int i = 0; i < WINDOW_SIZE; i++) {
-        magnitude_buffer[i] = 0.0;
+    // Initialize magnitude history buffer
+    for (int i = 0; i < MOVING_AVG_WINDOW; i++) {
+        magnitude_history[i] = 0.0;
     }
 
     for (int i = 0; i < SAMPLE_COUNT; i++) {
@@ -138,81 +150,101 @@ void heavy_compute() {
         float y = accel_data[i][1] / 1000.0;
         float z = accel_data[i][2] / 1000.0;
 
-        float magnitude = sqrt(x*x + y*y + z*z);
+        float acceleration_magnitude = sqrt(x*x + y*y + z*z);
 
-        // Update moving average buffer
-        magnitude_buffer[buffer_index] = magnitude;
-        buffer_index = (buffer_index + 1) % WINDOW_SIZE;
+        // Update moving average filter
+        magnitude_history[history_index] = acceleration_magnitude;
+        history_index = (history_index + 1) % MOVING_AVG_WINDOW;
 
         // Calculate moving average
-        float avg = 0.0;
-        for (int j = 0; j < WINDOW_SIZE; j++) {
-            avg += magnitude_buffer[j];
+        float moving_average = 0.0;
+        for (int j = 0; j < MOVING_AVG_WINDOW; j++) {
+            moving_average += magnitude_history[j];
         }
-        avg /= WINDOW_SIZE;
+        moving_average /= MOVING_AVG_WINDOW;
 
-        // Simple threshold-based step detection
-        if (magnitude > avg * THRESHOLD && magnitude > 1.2) {
-            activity_result[i] = 1;  // Step detected
+        // Threshold-based step detection
+        if (acceleration_magnitude > moving_average * STEP_THRESHOLD &&
+            acceleration_magnitude > MIN_STEP_MAGNITUDE) {
+            step_detected[i] = 1;  // Step detected
 
             // Debouncing: only count if previous few samples were low
             if (i > 3) {
-                int prev_steps = 0;
+                int recent_steps = 0;
                 for (int k = 1; k <= 3; k++) {
-                    if (activity_result[i - k] == 1) prev_steps++;
+                    if (step_detected[i - k] == 1) recent_steps++;
                 }
-                if (prev_steps == 0) {  // No recent steps
-                    total_steps++;
+                if (recent_steps == 0) {  // No recent steps
+                    step_count++;
                 }
             } else {
-                total_steps++;
+                step_count++;
             }
         } else {
-            activity_result[i] = 0;  // No step
+            step_detected[i] = 0;  // No step
         }
 
-        // Simulate computation intensity (optional)
+        // Optional: Simulate computation intensity
         // for (int j = 0; j < 10; j++) {
-        //     magnitude = sqrt(magnitude * 1.1);
+        //     acceleration_magnitude = sqrt(acceleration_magnitude * 1.1);
         // }
     }
 #endif
+    printf("[HAR] Step detection complete\n");
 }
 
-void post_compute() {
-    // Aggregate results: count total steps
-    // (This is already done in heavy_compute, but could do verification here)
-    printf("Total steps detected: %u\n", total_steps);
+// Phase 4a: Analyze step detection results
+void har_analyze_results() {
+    printf("[HAR] Analyzing results...\n");
 
-    // Optional: Calculate step frequency
-    if (total_steps > 1) {
-        float step_freq = (total_steps * 10.0) / SAMPLE_COUNT;  // Steps per second
-        printf("Step frequency: %.2f Hz\n", step_freq);
+    // Calculate step frequency
+    if (step_count > 1) {
+        float step_frequency = (step_count * 10.0) / SAMPLE_COUNT;  // Steps per second
+        float steps_per_minute = step_frequency * 60.0;
+        printf("Step frequency: %.2f Hz (%.1f steps/min)\n",
+               step_frequency, steps_per_minute);
     }
 }
 
-void display_output() {
-    printf("=== HAR Results ===\n");
-    printf("Total steps: %u\n", total_steps);
-    printf("Activity samples (first 20): ");
-    for (int i = 0; i < 20 && i < SAMPLE_COUNT; i++) {
-        printf("%d", activity_result[i]);
+// Phase 4b: Display statistics
+void har_display_statistics() {
+    printf("\n=== HAR Statistics ===\n");
+    printf("Total steps detected: %u\n", step_count);
+    printf("Step detection pattern: ");
+
+    int steps_in_display = (SAMPLE_COUNT < 20) ? SAMPLE_COUNT : 20;
+    for (int i = 0; i < steps_in_display; i++) {
+        printf("%c", step_detected[i] ? 'S' : '.');
     }
-    printf("...\n");
+
+    if (SAMPLE_COUNT > 20) {
+        printf("...");
+    }
+    printf("\n");
+
+    // Show sample information
+    printf("Samples analyzed: %d\n", SAMPLE_COUNT);
+    printf("Sampling rate: 10 Hz\n");
+    printf("Duration: %.1f seconds\n", SAMPLE_COUNT / 10.0);
 }
 
-void post_processing() {
+// Phase 5: Transmit results via RF
+void har_transmit_results() {
+    printf("[HAR] Transmitting results...\n");
     uint8_t *rf_reg;
 
     periRegister(RF_ID, &rf_reg);
     periInit(rf_reg);
 
-    // simple packet
-
+    // Transmit step count (4 bytes)
+    printf("Transmitting step count: %u\n", step_count);
     for (int i = 0; i < 4; i++) {
-        rfTransmitByte(rf_reg, total_steps);
+        // Send each byte of the step count
+        uint8_t byte_to_send = (step_count >> (i * 8)) & 0xFF;
+        rfTransmitByte(rf_reg, byte_to_send);
         DelayMS(10);
     }
 
     periLogout(RF_ID);
+    printf("[HAR] Transmission complete\n");
 }

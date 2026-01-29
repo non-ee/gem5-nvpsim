@@ -1,10 +1,7 @@
 Import('*')
 
 Source('vdev.cc')
-Source('measure_unit.cc')
 
 SimObject('VirtualDevice.py')
-SimObject('MeasureUnit.py')
 
 DebugFlag('VirtualDevice')
-DebugFlag('MeasureUnit')

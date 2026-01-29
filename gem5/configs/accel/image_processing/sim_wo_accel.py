@@ -61,9 +61,12 @@ print "---- deltaE = %f.\n" %(system.energy_mgmt.state_machine.thres_off_to_1 - 
 ##########	CPU 	###############
 ###################################
 
+# MSP430F5529: 3.0V * 220u = 660u
+# nJ/cycle = 660 / 1000
+
 # CPU: basic params
 system.cpu = AtomicSimpleCPU(
-			power_cpu = [0, 0.3, 1.3], 	# nJ/cycle
+			power_cpu = [0, 0.3, 3], 	# nJ/cycle
 			cycle_backup = 5, 		# nJ/cycle
 			cycle_restore = 3 		# nJ/cycle
 		)
@@ -99,13 +102,13 @@ system.vdev0.cpu = system.cpu
 # Access address range for the device
 system.vdev0.range = system.vdev_ranges[0]
 # The energy consumption of each cycle at power-off, idle, normal, active mode.
-system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6), Float(1.35)]
+system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.14), Float(1.4), Float(7.0)]
 # Delay of an active task
-system.vdev0.delay_self = '1ms'
+system.vdev0.delay_self = '50us'
 # Delay of the task returning interrupt
 system.vdev0.delay_cpu_interrupt = '20us'
 # Initialization delay
-system.vdev0.delay_set = '2200us'
+system.vdev0.delay_set = '5ms'
 # Recovering delay :: ToRemove
 system.vdev0.delay_recover = '920us'
 # The device is volatile (is_interruptable = 0)
@@ -116,13 +119,12 @@ system.vdev0.s_energy_port = system.energy_mgmt.m_energy_port
 # Generate log file of this device
 system.vdev0.need_log = 1
 
-
 ## Virtual Device 2: Transmitter
 system.vdev1 = VirtualDevice(id=1)
 system.vdev1.cpu = system.cpu
 system.vdev1.range = system.vdev_ranges[1]
 system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.24), Float(2.4), Float(11.9)]
-system.vdev1.delay_self = '2000us'
+system.vdev1.delay_self = '2ms'
 system.vdev1.delay_cpu_interrupt = '100us'
 system.vdev1.delay_set = '660us'
 system.vdev1.delay_recover = '145us'

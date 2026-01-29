@@ -2,7 +2,10 @@
 #include "peripheral.h"
 #include <stdint.h>
 
-#define COUNT 20
+#define COUNT 10
+
+#define TMP_SENSOR_ID	0
+#define RF_ID			1
 
 volatile uint8_t src_array[COUNT];
 volatile uint8_t dst_array[COUNT];

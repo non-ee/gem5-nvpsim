@@ -40,7 +40,7 @@ system.mem_ranges = [
 ###################################
 
 # Power Supply (file path and sample period)
-energy_path = 'profile/solar_new_60000.txt'
+energy_path = 'profile/solar_new_30000.txt'
 system.energy_mgmt = EnergyMgmt(path_energy_profile = energy_path, energy_time_unit = '10us')
 # Energy Management Strategy: State Machine
 system.energy_mgmt.state_machine = SimpleEnergySM()
@@ -74,6 +74,7 @@ system.membus = SystemXBar()
 system.cpu.icache_port = system.membus.slave
 system.cpu.dcache_port = system.membus.slave
 system.cpu.createInterruptController()
+
 system.mem_ctrl = DDR3_1600_x64()
 system.mem_ctrl.range = system.mem_ranges[0]
 system.mem_ctrl.port = system.membus.master
@@ -92,6 +93,7 @@ system.vaddr_vdev_ranges = [
     AddrRange('1000MB', '1000MB'),
     AddrRange('1001MB', '1001MB')
 ]
+
 
 # Virtual device 1
 system.vdev0 = VirtualDevice(id=0)
@@ -122,14 +124,38 @@ system.vdev1 = VirtualDevice(id=1)
 system.vdev1.cpu = system.cpu
 system.vdev1.range = system.vdev_ranges[1]
 system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.24), Float(2.4), Float(11.9)]
-system.vdev1.delay_self = '2000us'
-system.vdev1.delay_cpu_interrupt = '100us'
-system.vdev1.delay_set = '660us'
+system.vdev1.delay_self = '1000us'
+system.vdev1.delay_cpu_interrupt = '10us'
+system.vdev1.delay_set = '66us'
 system.vdev1.delay_recover = '145us'
 system.vdev1.is_interruptable = 0
 system.vdev1.port = system.membus.master
 system.vdev1.s_energy_port = system.energy_mgmt.m_energy_port
 system.vdev1.need_log = 1
+
+###########  DMA Controller  ############
+system.dma_ctrl = DmaCtrl()
+system.dma_ctrl.cpu = system.cpu
+system.dma_ctrl.s_energy_port = system.energy_mgmt.m_energy_port
+system.dma_ctrl.bandwidth = 10
+
+# Energy for [OFF, READ, WRITE]
+system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(5.0)]
+
+###########  Accelerator  ############
+system.accel = Accelerator()
+system.accel.cpu = system.cpu
+system.accel.compute_unit = SimpleComputeUnit(latency="6ms")
+system.accel.dma_ctrl = system.dma_ctrl
+system.accel.s_energy_port = system.energy_mgmt.m_energy_port
+system.accel.ctrl_port = system.membus.master
+
+system.accel_range = AddrRange(0x50000000, size='2MB')
+system.accel.control_range = system.accel_range
+
+system.accel.delay_init = '100us'
+system.accel.delay_cpu_interrupt = '100us'
+system.accel.energy_per_cycle = [Float(0.0), Float(0.5), Float(2.0)]
 
 ###################################
 ###########  Benchmark  ############
@@ -146,7 +172,6 @@ m5.instantiate()
 
 print "Beginning simulation!"
 exit_event = m5.simulate(int(599900000))
-# exit_event = m5.simulate(int(166200000))
 print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause())
 
 ###################################
@@ -168,6 +193,10 @@ fo.write("%f,%f,%i,%i,%s\n" % (cap, profilemult, power_failure, m5.curTick(), ex
 fo.close()
 
 print "%f,%f,%i,%i" % (cap, profilemult, power_failure, m5.curTick())
+
+fo = open("m5out/ticks_output.txt","a")
+fo.write("Total simulation ticks: %i\n" % m5.curTick())
+fo.close()
 
 #fi = open("m5out/devicedata","r")
 #line = fi.readline()
