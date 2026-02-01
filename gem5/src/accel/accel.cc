@@ -144,6 +144,7 @@ Accelerator::Accelerator(const Params *p) :
     energy_per_cycle[0] = p->energy_per_cycle[0];
     energy_per_cycle[1] = p->energy_per_cycle[1];
     energy_per_cycle[2] = p->energy_per_cycle[2];
+    energy_per_cycle[3] = p->energy_per_cycle[3];
 
     total_energy_consumed = 0;
 
@@ -252,7 +253,7 @@ void Accelerator::onComputeAbort()
 void Accelerator::doInit()
 {
     DPRINTF(Accelerator, "Scheduling initialization event\n");
-    energy_state = STATE_ON;
+    energy_state = STATE_INIT;
 
     /* Initialize any necessary resources or state */
     input_buffer = new uint8_t[input_count];
@@ -350,8 +351,11 @@ Tick Accelerator::recvAtomic(PacketPtr pkt)
                     {
                         DPRINTF(Accelerator, "INIT received: scheduling initialization\n");
                         cmd &= ~DONE_BIT;
-                        setCmd(ACCEL_INIT);
-                        energy_state = STATE_ON;
+
+                        if (cmd & INIT_BIT)
+                            setCmd(ACCEL_DMA_READ);
+                        else
+                            setCmd(ACCEL_INIT);
                     }
                 }
                 else {
@@ -464,6 +468,7 @@ void Accelerator::handleInterrupt()
 void Accelerator::handleRecovery()
 {
     DPRINTF(Accelerator, "Accelerator: handles recovery\n");
+
     if ((cmd & CMD_MASK) == ACCEL_INIT) {
         DPRINTF(Accelerator, "Accelerator: reschedule event_init\n");
         doInit();

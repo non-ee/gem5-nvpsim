@@ -18,7 +18,8 @@
 enum AccelEnergyState {
     STATE_OFF = 0,
     STATE_IDLE = 1,
-    STATE_ON = 2
+    STATE_INIT = 2,
+    STATE_ON = 3
 };
 
 class Accelerator : public MemObject, public DmaCallBack, public ComputeCallBack
@@ -128,7 +129,7 @@ protected:
     Tick delay_init;
     Tick delay_cpu_interrupt;
 
-    double energy_per_cycle[3] = {0.0, 0.2, 2.0};
+    double energy_per_cycle[4] = {0.0, 0.2, 2.0, 2.0};
     AccelEnergyState energy_state;
 
     /** Cmd manipulation **/
