@@ -135,6 +135,7 @@ Accelerator::Accelerator(const Params *p) :
 
     delay_init(p->delay_init),
     delay_cpu_interrupt(p->delay_cpu_interrupt),
+    delay_recover(p->delay_recover),
 
     energy_state(AccelEnergyState::STATE_OFF),
     event_interrupt(this, false, Event::Accelerator_Interrupt)
@@ -154,6 +155,7 @@ Accelerator::Accelerator(const Params *p) :
     output_count = 0;
 
     cmd = 0;
+    need_recover = false;
 
     input_buffer = nullptr;
     output_buffer = nullptr;
@@ -459,9 +461,12 @@ void Accelerator::handleInterrupt()
             deschedule(event_interrupt);
         }
     }
-    else if ((cmd & CMD_MASK) == ACCEL_COMPUTE) {
-        DPRINTF(Accelerator, "Accelerator: abort compute\n");
-        abortCompute();
+    else {
+        need_recover = true;
+        if ((cmd & CMD_MASK) == ACCEL_COMPUTE) {
+            DPRINTF(Accelerator, "Accelerator: abort compute\n");
+            abortCompute();
+        }
     }
 }
 
@@ -473,15 +478,27 @@ void Accelerator::handleRecovery()
         DPRINTF(Accelerator, "Accelerator: reschedule event_init\n");
         doInit();
     }
-    else if ((cmd & CMD_MASK) == ACCEL_COMPUTE) {
-        DPRINTF(Accelerator, "Accelerator: redo compute\n");
-        doCompute();
+    else {
+        /* Recovery */
+        energy_state = STATE_ON;
+        schedule(event_interrupt, curTick() + delay_recover);
+
+        if ((cmd & CMD_MASK) == ACCEL_COMPUTE) {
+            DPRINTF(Accelerator, "Accelerator: redo compute\n");
+            doCompute();
+        }
     }
 }
 
 /** triggerInterrupt: stub to notify CPU - adjust to your system's API */
 void Accelerator::triggerInterrupt()
 {
+    if (need_recover) {
+        DPRINTF(Accelerator, "Power recovery done\n");
+        need_recover = false;
+        return;
+    }
+
     uint8_t accel_op = cmd & CMD_MASK;
     if (accel_op == ACCEL_INIT) {
         DPRINTF(Accelerator, "Initialization done\n");
