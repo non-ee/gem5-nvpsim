@@ -482,12 +482,6 @@ void Accelerator::handleRecovery()
         /* Recovery */
         energy_state = STATE_ON;
         schedule(event_interrupt, curTick() + delay_recover);
-
-        if ((cmd & CMD_MASK) == ACCEL_COMPUTE) {
-            DPRINTF(Accelerator, "Accelerator: redo compute\n");
-            doCompute();
-        }
-    }
 }
 
 /** triggerInterrupt: stub to notify CPU - adjust to your system's API */
