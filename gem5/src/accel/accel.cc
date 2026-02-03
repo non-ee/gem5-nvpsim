@@ -456,12 +456,12 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 void Accelerator::handleInterrupt()
 {
     if ((cmd & CMD_MASK) == ACCEL_INIT) {
-        // if (event_interrupt.scheduled()) {
-        //     DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
-        //     deschedule(event_interrupt);
-        // }
-        DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
-        deschedule(event_interrupt);
+        if (event_interrupt.scheduled()) {
+            DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
+            deschedule(event_interrupt);
+        }
+        // DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
+        // deschedule(event_interrupt);
     }
     else {
         need_recover = true;
@@ -483,6 +483,9 @@ void Accelerator::handleRecovery()
     else {
         /* Recovery */
         energy_state = STATE_ON;
+        cmd |= BUSY_BIT;
+
+        DPRINTF(Accelerator, "Scheduling recovery..\n");
         schedule(event_interrupt, curTick() + delay_recover);
     }
 }
@@ -493,6 +496,7 @@ void Accelerator::triggerInterrupt()
     if (need_recover) {
         DPRINTF(Accelerator, "Power recovery done\n");
         need_recover = false;
+        cmd &= ~BUSY_BIT;
         return;
     }
 
@@ -505,7 +509,6 @@ void Accelerator::triggerInterrupt()
     }
     else if (accel_op == ACCEL_INTERRUPT) {
         DPRINTF(Accelerator, "CPU Interruption done\n");
-        cmd |= DONE_BIT;
         cmd &= ~BUSY_BIT;
         finishSuccess();
     }
