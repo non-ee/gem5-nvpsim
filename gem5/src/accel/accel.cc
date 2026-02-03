@@ -36,7 +36,7 @@ void Accelerator::fsmStep()
 {
     uint8_t accel_op = cmd & CMD_MASK;
 
-    if (accel_op == ACCEL_IDLE)
+    if (accel_op == ACCEL_IDLE || need_recover)
         return;
 
     cmd |= BUSY_BIT;
