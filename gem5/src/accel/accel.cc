@@ -456,10 +456,12 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
 void Accelerator::handleInterrupt()
 {
     if ((cmd & CMD_MASK) == ACCEL_INIT) {
-        if (event_interrupt.scheduled()) {
-            DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
-            deschedule(event_interrupt);
-        }
+        // if (event_interrupt.scheduled()) {
+        //     DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
+        //     deschedule(event_interrupt);
+        // }
+        DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
+        deschedule(event_interrupt);
     }
     else {
         need_recover = true;
@@ -476,12 +478,13 @@ void Accelerator::handleRecovery()
 
     if ((cmd & CMD_MASK) == ACCEL_INIT) {
         DPRINTF(Accelerator, "Accelerator: reschedule event_init\n");
-        doInit();
+        // doInit();
     }
     else {
         /* Recovery */
         energy_state = STATE_ON;
         schedule(event_interrupt, curTick() + delay_recover);
+    }
 }
 
 /** triggerInterrupt: stub to notify CPU - adjust to your system's API */
