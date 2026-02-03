@@ -176,6 +176,7 @@ protected:
 	bool inTask;
 	double total_energy_consumed;
 	Tick total_tick;
+	uint8_t power_failure;
 
 	virtual void onSimulationExit();
 

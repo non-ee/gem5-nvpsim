@@ -1,7 +1,8 @@
 import m5
 from m5.objects import *
-
+import sys
 import os
+
 if os.path.exists("m5out/devicedata"):
 	os.remove("m5out/devicedata")
 
@@ -14,17 +15,8 @@ if os.path.exists("m5out/energy_consumed.txt"):
 if os.path.exists("m5out/ticks_output.txt"):
 	os.remove("m5out/ticks_output.txt")
 
-if os.path.exists("m5out/powerfailure_report"):
-	os.remove("m5out/powerfailure_report")
-
-import sys
-cap = float(sys.argv[1])
-profilemult = float(sys.argv[2])
-print "cap: %f; energy: %f.\n" %(cap, profilemult)
-cap = cap * 0.2
-profilemult = profilemult * 0.005
-#cap = 10 		# uF
-#profilemult = 10	# times
+if os.path.exists("m5out/powerfailure_output.txt"):
+	os.remove("m5out/powerfailure_output.txt")
 
 system = System()
 system.clk_domain = SrcClockDomain()
@@ -38,9 +30,14 @@ system.mem_ranges = [
 ###################################
 #####	Energy Management Profiles #####
 ###################################
+cap = 10
+profilemult = 0.1
+print "cap: %f; energy: %f.\n" %(cap, profilemult)
+# cap = cap * 0.2
 
 # Power Supply (file path and sample period)
-energy_path = 'profile/solar_new_60000.txt'
+# energy_path = 'profile/solar_new_60000.txt'
+energy_path = 'profile/rf-cart.txt'
 system.energy_mgmt = EnergyMgmt(path_energy_profile = energy_path, energy_time_unit = '10us')
 # Energy Management Strategy: State Machine
 system.energy_mgmt.state_machine = SimpleEnergySM()
@@ -99,35 +96,26 @@ system.vaddr_vdev_ranges = [
 # Virtual device 1
 system.vdev0 = VirtualDevice(id=0)
 system.vdev0.cpu = system.cpu
-# Access address range for the device
 system.vdev0.range = system.vdev_ranges[0]
-# The energy consumption of each cycle at power-off, idle, normal, active mode.
-system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.14), Float(1.4), Float(7.0)]
-# Delay of an active task
-system.vdev0.delay_self = '50us'
-# Delay of the task returning interrupt
-system.vdev0.delay_cpu_interrupt = '20us'
-# Initialization delay
-system.vdev0.delay_set = '5ms'
-# Recovering delay :: ToRemove
-system.vdev0.delay_recover = '920us'
-# The device is volatile (is_interruptable = 0)
+system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0), Float(3.35e-3), Float(3.35e-3)]
+system.vdev0.delay_set = '100us'
+system.vdev0.delay_self = '12us'
+system.vdev0.delay_cpu_interrupt = '25us'
+system.vdev0.delay_recover = '100us'
 system.vdev0.is_interruptable = 0
-# Function and energy interface to connect to the system bus
 system.vdev0.port = system.membus.master
 system.vdev0.s_energy_port = system.energy_mgmt.m_energy_port
-# Generate log file of this device
 system.vdev0.need_log = 1
 
 ## Virtual Device 2: Transmitter
 system.vdev1 = VirtualDevice(id=1)
 system.vdev1.cpu = system.cpu
 system.vdev1.range = system.vdev_ranges[1]
-system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.24), Float(2.4), Float(11.9)]
-system.vdev1.delay_self = '2ms'
-system.vdev1.delay_cpu_interrupt = '100us'
-system.vdev1.delay_set = '660us'
-system.vdev1.delay_recover = '145us'
+system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0), Float(9.0), Float(9.0)]
+system.vdev1.delay_set = '100us'
+system.vdev1.delay_self = '8us'
+system.vdev1.delay_cpu_interrupt = '25us'
+system.vdev1.delay_recover = '100us'
 system.vdev1.is_interruptable = 0
 system.vdev1.port = system.membus.master
 system.vdev1.s_energy_port = system.energy_mgmt.m_energy_port
@@ -138,7 +126,7 @@ system.vdev1.need_log = 1
 ###################################
 process = LiveProcess()
 # Benchmark path
-prog = sys.argv[3]
+prog = sys.argv[1]
 process.cmd = ['tests/accelprog/%s' % prog]
 system.cpu.workload = process
 system.cpu.createThreads()
@@ -147,7 +135,7 @@ root = Root(full_system = False, system = system)
 m5.instantiate()
 
 print "Beginning simulation!"
-exit_event = m5.simulate(int(599900000))
+exit_event = m5.simulate(int(9999900000))
 # exit_event = m5.simulate(int(166200000))
 print 'Exiting @ tick %i because %s' % (m5.curTick(), exit_event.getCause())
 

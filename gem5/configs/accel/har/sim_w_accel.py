@@ -40,7 +40,7 @@ system.mem_ranges = [
 ###################################
 
 # Power Supply (file path and sample period)
-energy_path = 'profile/solar_new_30000.txt'
+energy_path = 'profile/solar_new_60000.txt'
 system.energy_mgmt = EnergyMgmt(path_energy_profile = energy_path, energy_time_unit = '10us')
 # Energy Management Strategy: State Machine
 system.energy_mgmt.state_machine = SimpleEnergySM()
@@ -63,7 +63,7 @@ print "---- deltaE = %f.\n" %(system.energy_mgmt.state_machine.thres_off_to_1 - 
 
 # CPU: basic params
 system.cpu = AtomicSimpleCPU(
-			power_cpu = [0, 0.3, 1.3], 	# nJ/cycle
+			power_cpu = [0, 0.3, 5], 	# nJ/cycle
 			cycle_backup = 5, 		# nJ/cycle
 			cycle_restore = 3 		# nJ/cycle
 		)
@@ -98,36 +98,26 @@ system.vaddr_vdev_ranges = [
 # Virtual device 1
 system.vdev0 = VirtualDevice(id=0)
 system.vdev0.cpu = system.cpu
-# Access address range for the device
 system.vdev0.range = system.vdev_ranges[0]
-# The energy consumption of each cycle at power-off, idle, normal, active mode.
-system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.6), Float(1.35)]
-# Delay of an active task
+system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0), Float(3e-3), Float(3e-3)]
+system.vdev0.delay_set = '100us'
 system.vdev0.delay_self = '1ms'
-# Delay of the task returning interrupt
-system.vdev0.delay_cpu_interrupt = '20us'
-# Initialization delay
-system.vdev0.delay_set = '2200us'
-# Recovering delay :: ToRemove
-system.vdev0.delay_recover = '920us'
-# The device is volatile (is_interruptable = 0)
+system.vdev0.delay_cpu_interrupt = '25us'
+system.vdev0.delay_recover = '100us'
 system.vdev0.is_interruptable = 0
-# Function and energy interface to connect to the system bus
 system.vdev0.port = system.membus.master
 system.vdev0.s_energy_port = system.energy_mgmt.m_energy_port
-# Generate log file of this device
 system.vdev0.need_log = 1
-
 
 ## Virtual Device 2: Transmitter
 system.vdev1 = VirtualDevice(id=1)
 system.vdev1.cpu = system.cpu
 system.vdev1.range = system.vdev_ranges[1]
-system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.24), Float(2.4), Float(11.9)]
-system.vdev1.delay_self = '1000us'
-system.vdev1.delay_cpu_interrupt = '10us'
-system.vdev1.delay_set = '66us'
-system.vdev1.delay_recover = '145us'
+system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0), Float(9.0), Float(9.0)]
+system.vdev1.delay_self = '100us'
+system.vdev1.delay_cpu_interrupt = '8us'
+system.vdev1.delay_set = '25us'
+system.vdev1.delay_recover = '100us'
 system.vdev1.is_interruptable = 0
 system.vdev1.port = system.membus.master
 system.vdev1.s_energy_port = system.energy_mgmt.m_energy_port
@@ -137,15 +127,15 @@ system.vdev1.need_log = 1
 system.dma_ctrl = DmaCtrl()
 system.dma_ctrl.cpu = system.cpu
 system.dma_ctrl.s_energy_port = system.energy_mgmt.m_energy_port
-system.dma_ctrl.bandwidth = 10
+system.dma_ctrl.bandwidth = 8
 
 # Energy for [OFF, READ, WRITE]
-system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(5.0)]
+system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(2.0)]
 
 ###########  Accelerator  ############
 system.accel = Accelerator()
 system.accel.cpu = system.cpu
-system.accel.compute_unit = SimpleComputeUnit(latency="6ms")
+system.accel.compute_unit = HAR_Accelerator(latency="6ms")
 system.accel.dma_ctrl = system.dma_ctrl
 system.accel.s_energy_port = system.energy_mgmt.m_energy_port
 system.accel.ctrl_port = system.membus.master

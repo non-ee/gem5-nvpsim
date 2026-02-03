@@ -43,7 +43,7 @@ EnergyMgmt::EnergyMgmt(const Params *p)
 void EnergyMgmt::onSimulationExit() {
     std::ofstream fout("m5out/energy_consumed.txt", std::ios::app);
     assert(fout);
-    fout << "EnergyMgmt (consumed): " << total_energy_consumed << std::endl;
+    fout << "EnergyMgmt: " << total_energy_consumed << std::endl;
     fout << "AtomicCPU: " << total_cpu_consumed << std::endl;
     fout.close();
 }

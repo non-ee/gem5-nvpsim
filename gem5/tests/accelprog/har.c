@@ -132,12 +132,14 @@ void har_detect_steps() {
     printf("[HAR] Detecting steps...\n");
 
 #ifdef W_ACCEL
+    printf("[HAR] computing detection with acceleration...\n");
     // Hardware accelerator path
     accel_set_addr((uint64_t)accel_data, (uint64_t)step_detected,
                    SAMPLE_COUNT * ACCEL_DATA_DIM, SAMPLE_COUNT);
     accel_start();
 #else
     // Software implementation: Step detection algorithm
+    printf("[HAR] computing detection with CPU...\n");
 
     // Initialize magnitude history buffer
     for (int i = 0; i < MOVING_AVG_WINDOW; i++) {
@@ -245,6 +247,7 @@ void har_transmit_results() {
         DelayMS(10);
     }
 
+    periTurnOff(rf_reg);
     periLogout(RF_ID);
     printf("[HAR] Transmission complete\n");
 }

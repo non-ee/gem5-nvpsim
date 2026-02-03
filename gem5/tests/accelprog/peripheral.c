@@ -54,33 +54,13 @@ void accelSense(int16_t *x, int16_t *y, int16_t *z, uint8_t *reg) {
 	sample_index++;
 }
 
-void micSense(uint16_t *sample, uint8_t *reg) {
+void micSense(int16_t *sample, uint8_t *reg) {
     if (!(*reg & VDEV_READY))
         periInit(reg);
 
     *reg = VDEV_EXEC;
     while(!(*reg & VDEV_FINISH));
-
-    // Simulate different animal sounds
-    static uint32_t counter = 0;
-    counter++;
-
-    // Generate different patterns for different animals
-    uint32_t pattern = counter % 100;
-
-    if (pattern < 10) {
-        // Bird pattern: high frequency chirps
-        *sample = 800 + (counter % 200);
-    } else if (pattern < 20) {
-        // Mammal pattern: medium frequency
-        *sample = 400 + (counter % 150);
-    } else if (pattern < 25) {
-        // Insect pattern: very high frequency
-        *sample = 900 + (counter % 100);
-    } else {
-        // Background noise
-        *sample = 200 + (counter % 50);
-    }
+    *sample = 10;
 }
 
 void
@@ -90,7 +70,7 @@ rfTrans(uint8_t *cmd_reg){
 };
 
 void
-rfTransmitByte(uint8_t *reg, uint8_t data){
+rfTransmitByte(uint8_t *reg){
     if (!(*reg & VDEV_READY))
         periInit(reg);
 	*reg = VDEV_EXEC;

@@ -159,7 +159,7 @@ void    periTurnOff(uint8_t *cmd_reg);
 
 void	tmpSense(uint8_t *tmp, uint8_t *cmd_reg);
 void    accelSense(int16_t *x, int16_t *y, int16_t *z, uint8_t *reg);
-void    micSense(uint16_t *sample, uint8_t *reg);
+void    micSense(int16_t *sample, uint8_t *reg);
 
 // camera
 void    camCapturePixel(uint8_t *pixel, uint8_t *camera_reg, uint16_t x, uint16_t y);
@@ -168,7 +168,7 @@ void    camCapturePixelSimple(uint8_t *pixel, uint8_t *camera_reg, uint16_t x, u
 void    camCapturePixelTest(uint8_t *pixel, uint8_t *camera_reg, uint16_t x, uint16_t y);
 
 void	rfTrans(uint8_t *cmd_reg);
-void    rfTransmitByte(uint8_t *cmd_reg, uint8_t data);
+void    rfTransmitByte(uint8_t *cmd_reg);
 
 void	generalVdevActive(uint8_t *cmd_reg);
 

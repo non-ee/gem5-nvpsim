@@ -6,6 +6,9 @@ ifeq ($(W_ACCEL), 1)
 	CFLAGS += -DW_ACCEL
 endif
 
+audio_processing: audio_processing.c accel_reg.o peripheral.o delay.o
+	$(CC) $(CFLAGS) -o audio_processing audio_processing.c peripheral.o accel_reg.o delay.o -static -lm
+
 image_processing: image_processing.c accel_reg.o peripheral.o delay.o camera.o
 	$(CC) $(CFLAGS) -o image_processing image_processing.c peripheral.o accel_reg.o delay.o camera.o -static -lm
 

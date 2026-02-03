@@ -66,7 +66,7 @@ print "---- deltaE = %f.\n" %(system.energy_mgmt.state_machine.thres_off_to_1 - 
 
 # CPU: basic params
 system.cpu = AtomicSimpleCPU(
-			power_cpu = [0, 0.3, 3], 	# nJ/cycle
+			power_cpu = [0, 0.3, 5], 	# nJ/cycle
 			cycle_backup = 5, 		# nJ/cycle
 			cycle_restore = 3 		# nJ/cycle
 		)
@@ -99,35 +99,26 @@ system.vaddr_vdev_ranges = [
 # Virtual device 1
 system.vdev0 = VirtualDevice(id=0)
 system.vdev0.cpu = system.cpu
-# Access address range for the device
 system.vdev0.range = system.vdev_ranges[0]
-# The energy consumption of each cycle at power-off, idle, normal, active mode.
-system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0.06), Float(0.9), Float(3.0)]
-# Delay of an active task
+system.vdev0.energy_consumed_per_cycle_vdev = [Float(0), Float(0), Float(3e-3), Float(3e-3)]
+system.vdev0.delay_set = '100us'
 system.vdev0.delay_self = '1ms'
-# Delay of the task returning interrupt
-system.vdev0.delay_cpu_interrupt = '20us'
-# Initialization delay
-system.vdev0.delay_set = '5ms'
-# Recovering delay :: ToRemove
-system.vdev0.delay_recover = '920us'
-# The device is volatile (is_interruptable = 0)
+system.vdev0.delay_cpu_interrupt = '25us'
+system.vdev0.delay_recover = '100us'
 system.vdev0.is_interruptable = 0
-# Function and energy interface to connect to the system bus
 system.vdev0.port = system.membus.master
 system.vdev0.s_energy_port = system.energy_mgmt.m_energy_port
-# Generate log file of this device
 system.vdev0.need_log = 1
 
 ## Virtual Device 2: Transmitter
 system.vdev1 = VirtualDevice(id=1)
 system.vdev1.cpu = system.cpu
 system.vdev1.range = system.vdev_ranges[1]
-system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0.24), Float(2.4), Float(11.9)]
-system.vdev1.delay_self = '2000us'
-system.vdev1.delay_cpu_interrupt = '100us'
-system.vdev1.delay_set = '660us'
-system.vdev1.delay_recover = '145us'
+system.vdev1.energy_consumed_per_cycle_vdev = [Float(0), Float(0), Float(9.0), Float(9.0)]
+system.vdev1.delay_self = '100us'
+system.vdev1.delay_cpu_interrupt = '8us'
+system.vdev1.delay_set = '25us'
+system.vdev1.delay_recover = '100us'
 system.vdev1.is_interruptable = 0
 system.vdev1.port = system.membus.master
 system.vdev1.s_energy_port = system.energy_mgmt.m_energy_port
