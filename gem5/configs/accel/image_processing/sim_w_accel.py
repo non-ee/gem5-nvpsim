@@ -56,7 +56,7 @@ print "---- deltaE = %f.\n" %(system.energy_mgmt.state_machine.thres_off_to_1 - 
 
 # CPU: basic params
 system.cpu = AtomicSimpleCPU(
-			power_cpu = [0, 0.3, 3], 	# nJ/cycle
+			power_cpu = [0, 0.3, 2.5], 	# nJ/cycle
 			cycle_backup = 5, 		# nJ/cycle
 			cycle_restore = 3 		# nJ/cycle
 		)
@@ -139,7 +139,7 @@ system.accel.compute_unit = ImageProcessingUnit(latency="40us")
 system.accel.energy_per_cycle = [Float(0.0), Float(15), Float(11.5), Float(49)]
 system.accel.delay_init = '52us'
 system.accel.delay_cpu_interrupt = '25us'
-system.accel.delay_recover = '80us'
+system.accel.is_interruptable = 1
 
 ## EyerissV2, efficient version of eyeriss
 # system.accel.compute_unit = ImageProcessingUnit(latency="2us")

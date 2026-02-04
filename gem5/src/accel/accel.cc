@@ -135,6 +135,7 @@ Accelerator::Accelerator(const Params *p) :
 
     delay_init(p->delay_init),
     delay_cpu_interrupt(p->delay_cpu_interrupt),
+    is_interruptable(p->is_interruptable),
 
     energy_state(AccelEnergyState::STATE_OFF),
     event_interrupt(this, false, Event::Accelerator_Interrupt)
@@ -431,7 +432,6 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
     {
         DPRINTF(Accelerator, "Powering off ...\n");
         energy_state = STATE_OFF;
-        // handleInterrupt();
 
         uint8_t accel_op = cmd & CMD_MASK;
         if (accel_op == ACCEL_INIT || accel_op == ACCEL_INTERRUPT) {
@@ -450,10 +450,16 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
         DPRINTF(Accelerator, "Powering on ...\n");
-        DPRINTF(Accelerator, "Restart from initialization ...\n");
         energy_state = STATE_IDLE;
         cmd &= ~BUSY_BIT;
-        setCmd(ACCEL_INIT);
+
+        if (!is_interruptable) {
+            DPRINTF(Accelerator, "Restart from initialization ...\n");
+            setCmd(ACCEL_INIT);
+        }
+        else {
+            DPRINTF(Accelerator, "Restore and continue acceleration ...\n ");
+        }
         // handleRecovery();
     }
     else {

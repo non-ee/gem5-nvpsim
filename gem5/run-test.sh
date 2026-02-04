@@ -28,7 +28,7 @@ make ${prog} -C tests/accelprog/ W_ACCEL=$W_ACCEL
 
 # FLAG=--debug-flag=VirtualDevice,SimpleCPU
 # FLAG=--debug-flag=VirtualDevice,Accelerator
-FLAG=--debug-flag=Accelerator,DmaCtrl
+FLAG=--debug-flag=Accelerator
 
 
 echo "========================================================="

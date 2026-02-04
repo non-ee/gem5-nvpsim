@@ -1,4 +1,5 @@
 #include "accel/dma_ctrl.hh"
+#include "accel.hh"
 #include "accel/mem_if.hh"
 #include "dma_ctrl.hh"
 #include "mem/se_translating_port_proxy.hh"
@@ -100,7 +101,7 @@ void DmaCtrl::doDma() {
     char devname[100] = "DmaCtrl";
     double energy_access = t.size * energy_access_per_byte;
     EnergyObject::consumeEnergy(devname, energy_access);
-    DPRINTF(DmaCtrl, "Memory access consumed %f energy\n", energy_access);
+    DPRINTF(Accelerator, "Memory access consumed %f energy\n", energy_access);
 }
 
 int DmaCtrl::handleMsg(const EnergyMsg& msg) {
