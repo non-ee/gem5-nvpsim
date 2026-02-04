@@ -119,10 +119,10 @@ system.vdev1.need_log = 1
 system.dma_ctrl = DmaCtrl()
 system.dma_ctrl.cpu = system.cpu
 system.dma_ctrl.s_energy_port = system.energy_mgmt.m_energy_port
-system.dma_ctrl.bandwidth = 10
+system.dma_ctrl.latency_access_per_byte = "0.56us"
+system.dma_ctrl.energy_access_per_byte = Float(0.4)
 
 # Energy for [OFF, READ, WRITE]
-system.dma_ctrl.energy_per_tx = [Float(0.0), Float(0.2), Float(2.0)]
 
 ###########  Accelerator  ############
 system.accel = Accelerator()
