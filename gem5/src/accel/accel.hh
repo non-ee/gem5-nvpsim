@@ -144,7 +144,6 @@ protected:
     void doCompute();
     void doInterrupt();
     void finishSuccess();
-    void abortCompute();
 
     void handleInterrupt();
     void handleRecovery();

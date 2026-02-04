@@ -256,6 +256,7 @@ void Accelerator::doInit()
 {
     DPRINTF(Accelerator, "Scheduling initialization event\n");
     energy_state = STATE_INIT;
+    cmd &= ~INIT_BIT;
 
     /* Initialize any necessary resources or state */
     input_buffer = new uint8_t[input_count];
@@ -321,11 +322,6 @@ void Accelerator::doInterrupt()
     energy_state = STATE_IDLE;
     cpu->accelInterrupt(delay_cpu_interrupt);
     schedule(event_interrupt, curTick() + delay_cpu_interrupt);
-}
-
-void Accelerator::abortCompute()
-{
-    computeUnit->abort();
 }
 
 /** Receive atomic request **/
@@ -437,13 +433,30 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
     {
         DPRINTF(Accelerator, "Powering off ...\n");
         energy_state = STATE_OFF;
-        handleInterrupt();
+        // handleInterrupt();
+
+        uint8_t accel_op = cmd & CMD_MASK;
+        if (accel_op == ACCEL_INIT || accel_op == ACCEL_INTERRUPT) {
+            DPRINTF(Accelerator, "Aborting scheduled interrupt ...\n");
+            deschedule(event_interrupt);
+        }
+        else if (accel_op == ACCEL_DMA_READ || accel_op == ACCEL_DMA_WRITE) {
+            DPRINTF(Accelerator, "Aborting memory access ...\n");
+            dmaCtrl->abortDma();
+        }
+        else if (accel_op == ACCEL_COMPUTE) {
+            DPRINTF(Accelerator, "Aborting compute ...\n");
+            computeUnit->abort();
+        }
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
     {
         DPRINTF(Accelerator, "Powering on ...\n");
+        DPRINTF(Accelerator, "Restart from initialization ...\n");
         energy_state = STATE_IDLE;
-        handleRecovery();
+        cmd &= ~BUSY_BIT;
+        setCmd(ACCEL_INIT);
+        // handleRecovery();
     }
     else {
         DPRINTF(EnergyMgmt, "Unknown message type received!\n");
@@ -453,53 +466,9 @@ int Accelerator::handleMsg(const EnergyMsg &msg)
     return 1;
 }
 
-void Accelerator::handleInterrupt()
-{
-    if ((cmd & CMD_MASK) == ACCEL_INIT) {
-        if (event_interrupt.scheduled()) {
-            DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
-            deschedule(event_interrupt);
-        }
-        // DPRINTF(Accelerator, "Accelerator: deschedule event_init\n");
-        // deschedule(event_interrupt);
-    }
-    else {
-        need_recover = true;
-        if ((cmd & CMD_MASK) == ACCEL_COMPUTE) {
-            DPRINTF(Accelerator, "Accelerator: abort compute\n");
-            abortCompute();
-        }
-    }
-}
-
-void Accelerator::handleRecovery()
-{
-    DPRINTF(Accelerator, "Accelerator: handles recovery\n");
-
-    if ((cmd & CMD_MASK) == ACCEL_INIT) {
-        DPRINTF(Accelerator, "Accelerator: reschedule event_init\n");
-        // doInit();
-    }
-    else {
-        /* Recovery */
-        energy_state = STATE_ON;
-        cmd |= BUSY_BIT;
-
-        DPRINTF(Accelerator, "Scheduling recovery..\n");
-        schedule(event_interrupt, curTick() + delay_recover);
-    }
-}
-
 /** triggerInterrupt: stub to notify CPU - adjust to your system's API */
 void Accelerator::triggerInterrupt()
 {
-    if (need_recover) {
-        DPRINTF(Accelerator, "Power recovery done\n");
-        need_recover = false;
-        cmd &= ~BUSY_BIT;
-        return;
-    }
-
     uint8_t accel_op = cmd & CMD_MASK;
     if (accel_op == ACCEL_INIT) {
         DPRINTF(Accelerator, "Initialization done\n");
@@ -520,7 +489,6 @@ void Accelerator::finishSuccess()
     cmd |= DONE_BIT;
     setCmd(ACCEL_IDLE);
     energy_state = STATE_OFF;
-    DPRINTF(Accelerator, "cmd = %x\n", cmd);
 }
 
 Accelerator *AcceleratorParams::create() {

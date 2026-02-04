@@ -48,10 +48,7 @@ class DmaCtrl : public ClockedObject
         // Simple async read/write
         void startRead(Addr addr, uint8_t* buf, size_t size, std::function<void()> cb);
         void startWrite(Addr addr, uint8_t* buf, size_t size, std::function<void()> cb);
-
-        bool active() const {
-            return dmaTask.op == READ || dmaTask.op == WRITE;
-        }
+        void abortDma();
 
     private:
         BaseCPU *cpu;

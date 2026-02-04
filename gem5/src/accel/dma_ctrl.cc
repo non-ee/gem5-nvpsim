@@ -1,5 +1,6 @@
 #include "accel/dma_ctrl.hh"
 #include "accel/mem_if.hh"
+#include "dma_ctrl.hh"
 #include "mem/se_translating_port_proxy.hh"
 #include "cpu/thread_context.hh"
 #include "engy/state_machine.hh"
@@ -73,6 +74,11 @@ void DmaCtrl::startWrite(Addr addr, uint8_t* buf, size_t size, std::function<voi
     access_latency = size * latency_access_per_byte;
     schedule(dmaEvent, curTick() + access_latency);
     DPRINTF(DmaCtrl, "Memory access need LAT=%i\n", access_latency);
+}
+
+void DmaCtrl::abortDma() {
+    DPRINTF(DmaCtrl, "Aborting memory access ...\n");
+    deschedule(dmaEvent);
 }
 
 void DmaCtrl::doDma() {
