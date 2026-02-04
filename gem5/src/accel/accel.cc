@@ -36,7 +36,7 @@ void Accelerator::fsmStep()
 {
     uint8_t accel_op = cmd & CMD_MASK;
 
-    if (accel_op == ACCEL_IDLE || need_recover)
+    if (accel_op == ACCEL_IDLE)
         return;
 
     cmd |= BUSY_BIT;
@@ -135,7 +135,6 @@ Accelerator::Accelerator(const Params *p) :
 
     delay_init(p->delay_init),
     delay_cpu_interrupt(p->delay_cpu_interrupt),
-    delay_recover(p->delay_recover),
 
     energy_state(AccelEnergyState::STATE_OFF),
     event_interrupt(this, false, Event::Accelerator_Interrupt)
@@ -155,7 +154,6 @@ Accelerator::Accelerator(const Params *p) :
     output_count = 0;
 
     cmd = 0;
-    need_recover = false;
 
     input_buffer = nullptr;
     output_buffer = nullptr;

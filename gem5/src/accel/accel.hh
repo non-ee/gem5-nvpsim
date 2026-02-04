@@ -128,8 +128,6 @@ protected:
     /** Status */
     Tick delay_init;
     Tick delay_cpu_interrupt;
-    Tick delay_recover;
-    bool need_recover;
 
     double energy_per_cycle[4] = {0.0, 0.2, 2.0, 2.0};
     AccelEnergyState energy_state;
