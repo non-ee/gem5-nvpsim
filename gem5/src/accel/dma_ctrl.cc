@@ -7,6 +7,7 @@
 #include "debug/EnergyMgmt.hh"
 #include "debug/DmaCtrl.hh"
 #include <cstdint>
+#include <stdio.h>
 
 
 DmaCtrl::TickEvent::TickEvent(DmaCtrl *c)
@@ -21,35 +22,31 @@ const char *DmaCtrl::TickEvent::description() const {
     return "DMA Tick Event";
 }
 
-void DmaCtrl::tick() {
-    Tick latency = clockPeriod();
+// void DmaCtrl::tick() {
+//     Tick latency = clockPeriod();
 
-    double EngyConsume = 0;
-    EngyConsume = energy_per_tx[dmaTask.op] * ticksToCycles(latency);
+//     double EngyConsume = 0;
+//     EngyConsume = energy_per_tx[dmaTask.op] * ticksToCycles(latency);
 
-    char devname[100] = "DmaCtrl";
-    EnergyObject::consumeEnergy(devname, EngyConsume);
-    DPRINTF(EnergyMgmt, "DmaCtrl consumed %f energy\n", EngyConsume);
-    schedule(tickEvent, curTick() + latency);
-}
+//     char devname[100] = "DmaCtrl";
+//     EnergyObject::consumeEnergy(devname, EngyConsume);
+//     DPRINTF(EnergyMgmt, "DmaCtrl consumed %f energy\n", EngyConsume);
+//     schedule(tickEvent, curTick() + latency);
+// }
 
 
 DmaCtrl::DmaCtrl(const DmaCtrlParams *p)
     : ClockedObject(p),
-      tickEvent(this),
       cpu(p->cpu),
       portProxy(nullptr),
       mem(nullptr),
-      bandwidth(p->bandwidth),
+      latency_access_per_byte(p->latency_access_per_byte),
+      energy_access_per_byte(p->energy_access_per_byte),
       dmaTask(),
-      backupTask(),
       dmaEvent(this, false, Event::Accelerator_DMA_Pri)
 {
     inTask = false;
-
-    energy_per_tx[0] = p->energy_per_tx[0];
-    energy_per_tx[1] = p->energy_per_tx[1];
-    energy_per_tx[2] = p->energy_per_tx[2];
+    access_latency = 0;
 
     portProxy = new SETranslatingPortProxy(
         cpu->getDataPort(),
@@ -64,8 +61,6 @@ DmaCtrl::~DmaCtrl() {
         delete portProxy;
     if (mem)
         delete mem;
-    if (tickEvent.scheduled())
-        deschedule(tickEvent);
 }
 
 void DmaCtrl::init() {
@@ -82,9 +77,6 @@ void DmaCtrl::init() {
     } else {
         panic("DmaCtrl::init(): failed to create memory interface\n");
     }
-
-    if (!tickEvent.scheduled())
-        schedule(tickEvent, clockEdge(Cycles(0)));
 }
 
 void DmaCtrl::startRead(Addr addr, uint8_t* buf, size_t size, std::function<void()> cb)
@@ -92,7 +84,9 @@ void DmaCtrl::startRead(Addr addr, uint8_t* buf, size_t size, std::function<void
     DPRINTF(DmaCtrl, "Starting read from address %lx\n", addr);
     inTask = true;
     dmaTask = DmaTask(addr, buf, size, cb, READ);
-    schedule(dmaEvent, clockEdge(Cycles(1)));
+
+    access_latency = size * latency_access_per_byte;
+    schedule(dmaEvent, curTick() + access_latency);
 }
 
 void DmaCtrl::startWrite(Addr addr, uint8_t* buf, size_t size, std::function<void()> cb)
@@ -100,53 +94,47 @@ void DmaCtrl::startWrite(Addr addr, uint8_t* buf, size_t size, std::function<voi
     DPRINTF(DmaCtrl, "Starting read from address %lx\n", addr);
     inTask = true;
     dmaTask = DmaTask(addr, buf, size, cb, WRITE);
-    schedule(dmaEvent, clockEdge(Cycles(1)));
+
+    access_latency = size * latency_access_per_byte;
+    schedule(dmaEvent, curTick() + access_latency);
 }
 
 void DmaCtrl::doDma() {
     auto &t = dmaTask;
 
-    if (t.sizeLeft == 0) {
-        t.op = OFF;
-        inTask = false;
-        if (t.cb)
-            t.cb();
-        return;
-    }
-
-    size_t chunk = std::min(bandwidth, t.sizeLeft);
-
     if (t.op == READ)
-        mem->read(t.addr, t.buf, chunk);
+        mem->read(t.addr, t.buf, t.size);
     else if (t.op == WRITE)
-        mem->write(t.addr, t.buf, chunk);
+        mem->write(t.addr, t.buf, t.size);
     else
         panic("Invalid state");
 
-    t.addr += chunk;
-    t.buf += chunk;
-    t.sizeLeft -= chunk;
+    if (t.cb)
+        t.cb();
+    inTask = false;
 
-    DPRINTF(DmaCtrl, "Access to %lu bytes from address %lx\n", chunk, t.addr);
+    DPRINTF(DmaCtrl, "Access to %lu bytes from address %lx\n", t.size, t.addr);
 
-    schedule(dmaEvent, clockEdge(Cycles(1)));
+    char devname[100] = "DmaCtrl";
+    double energy_access = size * energy_access_per_byte;
+    EnergyObject::consumeEnergy(devname, energy_access);
+    DPRINTF(DmaCtrl, "Memory access consumed %f energy\n", EngyConsume);
 }
 
 int DmaCtrl::handleMsg(const EnergyMsg& msg) {
-    if (!inTask)
-        return 1;
-
     if (msg.type == SimpleEnergySM::MsgType::POWER_OFF) {
-        if (!active()) return 1;
-
         DPRINTF(DmaCtrl, "Powering off ...\n");
-        backupDma();
+        if (dmaEvent.scheduled()) {
+            DPRINTF(DmaCtrl, "Aborting memory access..\n");
+            deschedule(dmaEvent);
+        }
     }
     else if (msg.type == SimpleEnergySM::MsgType::POWER_ON) {
-        if (active()) return 1;
-
         DPRINTF(DmaCtrl, "Powering on ...\n");
-        restoreDma();
+        if (inTask) {
+            DPRINTF(DmaCtrl, "Rescheduling memory access...\n")
+            schedule(dmaEvent, curTick() + access_latency);
+        }
     }
     else {
         DPRINTF(EnergyMgmt, "Unrecognized MsgType!\n");
@@ -154,21 +142,6 @@ int DmaCtrl::handleMsg(const EnergyMsg& msg) {
     }
 
     return 1;
-}
-
-void DmaCtrl::backupDma() {
-    if (dmaEvent.scheduled())
-        deschedule(dmaEvent);
-
-    backupTask = dmaTask;
-    dmaTask.op = OFF;
-}
-
-void DmaCtrl::restoreDma() {
-    dmaTask = backupTask;
-
-    if (!dmaEvent.scheduled())
-        schedule(dmaEvent, clockEdge(Cycles(1)));
 }
 
 DmaCtrl* DmaCtrlParams::create()

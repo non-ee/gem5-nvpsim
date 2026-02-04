@@ -1,0 +1,37 @@
+**Purpose**
+Compare performance and efficiency of 3 architectures in ImC system.
+
+Application: Image Processing, perform CNN inference on 8x8 image input and produce output of the same size
+(I will add one or two more application, to do the similar evaluation)
+
+Architectures:
+- CPU
+- CPU + Eyeriss (CNN accelerator)
+- CPU + FPGA (long config accelerator)
+
+CPU: Atomic CPU of gem5-nvp, clock=1MHz
+Eyeriss: CNN accelerator from academic research
+FPGA: Low power FPGA + NVM config
+
+**ImC System**
+Computing Architecture: 1 of 3 above
+Sensor: Camera
+TX: RF Transmitter
+
+Capacitor: 
+
+**Modeling Sensor**
+delay_set: initialization latency
+delay_self: latency for operating its main task
+delay_cpu_interrupt: latency for interrupt CPU, set to 25[us] (microsecond), for all devices
+
+energy_per_cycle: power consumption * CyclePeriod (= 1us)
+
+**Modeling Accelerator**
+delay_init: initialization latency
+compute_latency: latency for completing computing task
+
+energy_active: operation mode energy
+energy_init: normally make it the same as energy_active, but for FPGA config, it should be higher
+energy_idle: 10% of energy_active
+

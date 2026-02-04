@@ -22,31 +22,19 @@ struct DmaCallBack {
 struct DmaTask {
     Addr addr;
     uint8_t* buf;
-    size_t sizeLeft;
+    size_t size;
     std::function<void()> cb;
 
     DmaCtrlOp op = OFF;
 
     DmaTask()
-        : addr(0), buf(nullptr), sizeLeft(0), cb(nullptr), op(OFF) {}
+        : addr(0), buf(nullptr), size(0), cb(nullptr), op(OFF) {}
     DmaTask(Addr a, uint8_t* b, size_t s, std::function<void()> c, DmaCtrlOp o = OFF)
-        : addr(a), buf(b), sizeLeft(s), cb(c), op(o) {}
+        : addr(a), buf(b), size(s), cb(c), op(o) {}
 };
 
 class DmaCtrl : public ClockedObject
 {
-    private:
-        struct TickEvent : public Event {
-            DmaCtrl* ctrl;
-            TickEvent(DmaCtrl* c);
-            void process();
-            const char *description() const;
-        };
-
-        TickEvent tickEvent;
-        void tick();
-
-
     public:
         typedef DmaCtrlParams Params;
         const Params *params() const {
@@ -69,20 +57,18 @@ class DmaCtrl : public ClockedObject
         BaseCPU *cpu;
         PortProxy* portProxy;
         MemoryInterface* mem;
-        size_t bandwidth;
 
         bool inTask;
 
-        /** Energy modes of DmaCtrl : [OFF, READ, WRITE]; **/
-        double energy_per_tx[3] = {0.0, 0.2, 1.0};
+        Tick latency_access_per_byte;
+        double energy_access_per_byte;
+
+        Tick access_latency;
 
         // Tasks
         DmaTask dmaTask;
-        DmaTask backupTask;
 
         void doDma();
-        void backupDma();
-        void restoreDma();
 
         // events
         EventWrapper<DmaCtrl, &DmaCtrl::doDma> dmaEvent;
