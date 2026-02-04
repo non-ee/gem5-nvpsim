@@ -135,9 +135,9 @@ system.accel_range = AddrRange(0x50000000, size='2MB')
 system.accel.control_range = system.accel_range
 
 ## Eyeriss config, high performance accel
-system.accel.compute_unit = ImageProcessingUnit(latency="40us")
-system.accel.energy_per_cycle = [Float(0.0), Float(15), Float(11.5), Float(49)]
-system.accel.delay_init = '52us'
+system.accel.compute_unit = ImageProcessingUnit(latency="0.03us")
+system.accel.energy_per_cycle = [Float(0.0), Float(2), Float(), Float(20)]
+system.accel.delay_init = '5us'
 system.accel.delay_cpu_interrupt = '25us'
 system.accel.is_interruptable = 1
 
