@@ -6,7 +6,7 @@
 #define IMAGE_WIDTH         8
 #define IMAGE_HEIGHT        8
 #define IMAGE_SIZE          (IMAGE_WIDTH * IMAGE_HEIGHT)
-#define ITERATIONS          36  // Run kernel many times
+#define ITERATIONS          50  // Run kernel many times
 #define KERNEL_SIZE         3       // 3x3 convolution
 #define MOTION_THRESHOLD    10
 

@@ -27,7 +27,7 @@ system.mem_ranges = [
 ###################################
 #####	Energy Management Profiles #####
 ###################################
-cap = 5
+cap = 20
 profilemult = 0.1
 print "cap: %f; energy: %f.\n" %(cap, profilemult)
 # cap = cap * 0.2
@@ -135,32 +135,26 @@ system.accel_range = AddrRange(0x50000000, size='2MB')
 system.accel.control_range = system.accel_range
 
 ## Eyeriss config, high performance accel
-system.accel.compute_unit = ImageProcessingUnit(latency="0.03us")
-system.accel.energy_per_cycle = [Float(0.0), Float(2), Float(), Float(20)]
-system.accel.delay_init = '5us'
-system.accel.delay_cpu_interrupt = '25us'
-system.accel.is_interruptable = 1
-
-## EyerissV2, efficient version of eyeriss
-# system.accel.compute_unit = ImageProcessingUnit(latency="2us")
-# system.accel.energy_per_cycle = [Float(0.0), Float(1.2), Float(1.5), Float(1.1)]
-# system.accel.delay_init = '400us'  # Eyeriss
+# system.accel.compute_unit = ImageProcessingUnit(latency="0.03us")
+# system.accel.energy_per_cycle = [Float(0.0), Float(2), Float(0.7), Float(20)]
+# system.accel.delay_init = '81.76us'
 # system.accel.delay_cpu_interrupt = '25us'
-# system.accel.delay_recover = '400us'
-
-## Latice FPGA: efficient FPGA
-# system.accel.compute_unit = ImageProcessingUnit(latency="48us")
-# system.accel.energy_per_cycle = [Float(0.0), Float(0.2), Float(12), Float(2.1)]
-# system.accel.delay_init = '2.5ms'  # FPGA
-# system.accel.delay_cpu_interrupt = '25us'
-# system.accel.delay_recover = "2.5ms"
+# system.accel.is_interruptable = 0
 
 ## MOUSE
-# system.accel.compute_unit = ImageProcessingUnit(latency="1.2ms")
-# system.accel.energy_per_cycle = [Float(0.0), Float(0.0), Float(0.0), Float(0.83)]
-# system.accel.delay_init = '10ns'  # Eyeriss
+# system.accel.compute_unit = ImageProcessingUnit(latency="50us")
+# system.accel.energy_per_cycle = [Float(0.0), Float(0.0), Float(0.7), Float(5e-3)]
+# system.accel.delay_init = '4.48ns'  # Eyeriss
 # system.accel.delay_cpu_interrupt = '25us'
-# system.accel.delay_recover = '0us'
+# system.accel.is_interruptable = 1
+
+## Sonic
+system.accel.compute_unit = ImageProcessingUnit(latency="0.35ms")
+system.accel.energy_per_cycle = [Float(0.0), Float(7.43), Float(1.2), Float(74.3)]
+system.accel.delay_init = '50us'
+system.accel.delay_cpu_interrupt = '25us'
+system.accel.is_interruptable = 0
+
 
 ###################################
 ###########  Benchmark  ############

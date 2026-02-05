@@ -7,6 +7,7 @@
 #include "engy/state_machine.hh"
 #include "debug/EnergyMgmt.hh"
 #include "debug/DmaCtrl.hh"
+#include "debug/Accelerator.hh"
 #include <cstdint>
 #include <stdio.h>
 
