@@ -1,3 +1,4 @@
+from pickletools import float8
 import m5
 from m5.objects import *
 import sys
@@ -27,13 +28,14 @@ system.mem_ranges = [
 ###################################
 #####	Energy Management Profiles #####
 ###################################
-cap = 20
-profilemult = 0.1
+cap = float(sys.argv[3])
+profilemult = float(sys.argv[4])
 print "cap: %f; energy: %f.\n" %(cap, profilemult)
 # cap = cap * 0.2
 
 # Power Supply (file path and sample period)
-energy_path = 'profile/rf-cart.txt'
+trace = sys.argv[2]
+energy_path = 'profile/%s.txt' % trace
 system.energy_mgmt = EnergyMgmt(path_energy_profile = energy_path, energy_time_unit = '10us')
 # Energy Management Strategy: State Machine
 system.energy_mgmt.state_machine = SimpleEnergySM()
@@ -56,7 +58,7 @@ print "---- deltaE = %f.\n" %(system.energy_mgmt.state_machine.thres_off_to_1 - 
 
 # CPU: basic params
 system.cpu = AtomicSimpleCPU(
-			power_cpu = [0, 0.3, 2.5], 	# nJ/cycle
+			power_cpu = [0, 0.3, 1.3], 	# nJ/cycle
 			cycle_backup = 5, 		# nJ/cycle
 			cycle_restore = 3 		# nJ/cycle
 		)
@@ -135,11 +137,11 @@ system.accel_range = AddrRange(0x50000000, size='2MB')
 system.accel.control_range = system.accel_range
 
 ## Eyeriss config, high performance accel
-# system.accel.compute_unit = ImageProcessingUnit(latency="0.03us")
-# system.accel.energy_per_cycle = [Float(0.0), Float(2), Float(0.7), Float(20)]
-# system.accel.delay_init = '81.76us'
-# system.accel.delay_cpu_interrupt = '25us'
-# system.accel.is_interruptable = 0
+system.accel.compute_unit = ImageProcessingUnit(latency="0.03us")
+system.accel.energy_per_cycle = [Float(0.0), Float(2), Float(0.7), Float(20)]
+system.accel.delay_init = '81.76us'
+system.accel.delay_cpu_interrupt = '25us'
+system.accel.is_interruptable = 0
 
 ## MOUSE
 # system.accel.compute_unit = ImageProcessingUnit(latency="50us")
@@ -149,11 +151,11 @@ system.accel.control_range = system.accel_range
 # system.accel.is_interruptable = 1
 
 ## Sonic
-system.accel.compute_unit = ImageProcessingUnit(latency="0.35ms")
-system.accel.energy_per_cycle = [Float(0.0), Float(7.43), Float(1.2), Float(74.3)]
-system.accel.delay_init = '50us'
-system.accel.delay_cpu_interrupt = '25us'
-system.accel.is_interruptable = 0
+# system.accel.compute_unit = ImageProcessingUnit(latency="0.35ms")
+# system.accel.energy_per_cycle = [Float(0.0), Float(7.43), Float(1.2), Float(74.3)]
+# system.accel.delay_init = '50us'
+# system.accel.delay_cpu_interrupt = '25us'
+# system.accel.is_interruptable = 0
 
 
 ###################################

@@ -30,14 +30,15 @@ system.mem_ranges = [
 ###################################
 #####	Energy Management Profiles #####
 ###################################
-cap = 10
-profilemult = 0.1
+cap = float(sys.argv[3])
+profilemult = float(sys.argv[4])
 print "cap: %f; energy: %f.\n" %(cap, profilemult)
 # cap = cap * 0.2
 
 # Power Supply (file path and sample period)
 # energy_path = 'profile/solar_new_60000.txt'
-energy_path = 'profile/rf-cart.txt'
+trace = sys.argv[2]
+energy_path = 'profile/%s.txt' % trace
 system.energy_mgmt = EnergyMgmt(path_energy_profile = energy_path, energy_time_unit = '10us')
 # Energy Management Strategy: State Machine
 system.energy_mgmt.state_machine = SimpleEnergySM()
@@ -63,7 +64,7 @@ print "---- deltaE = %f.\n" %(system.energy_mgmt.state_machine.thres_off_to_1 - 
 
 # CPU: basic params
 system.cpu = AtomicSimpleCPU(
-			power_cpu = [0, 0.3, 2.5], 	# nJ/cycle
+			power_cpu = [0, 0.3, 1.3], 	# nJ/cycle
 			cycle_backup = 5, 		# nJ/cycle
 			cycle_restore = 3 		# nJ/cycle
 		)

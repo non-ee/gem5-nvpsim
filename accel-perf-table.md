@@ -1,15 +1,12 @@
-|            Metric             |          MOUSE (Projected MTJ, SHE)           |            Eyeriss (16-bit fixed-point)            |
-| :---------------------------: | :-------------------------------------------: | :------------------------------------------------: |
-|         Architecture          |    Fully non-volatile PIM; compute-in-MTJ     | Volatile systolic array; non-volatile FRAM weights |
-|        Compute Latency        |                    ~50 µs                     |                      ~0.03 µs                      |
-|        Compute Energy         |                    ~30 pJ                     |                      ~600 pJ                       |
-|    Initialization Latency     |            ~4.48 µs (FRAM load 8B)            |             ~81.76 µs (FRAM load 146B)             |
-|     Initialization Energy     |            ~3.2 nJ (FRAM load 8B)             |             ~58.4 nJ (FRAM load 146B)              |
-|  Restart After Interruption   | **No FRAM access**; resumes last op instantly |            **Full FRAM reload** (146B)             |
-|        Restart Latency        |                0 µs (no FRAM)                 |            ~81.76 µs (Similar to Init)             |
-|        Restart Energy         |                0 µs (no FRAM)                 |             ~58.4 nJ (Similar to Init)             |
-|      Interruption Safety      |          Yes - resumes transparently          |           No - must re-initialize fully            |
-| Energy-Harvesting Suitability |  Excellent – makes progress per energy burst  |              Poor - high restart cost              |
+|         Metric         | MOUSE (Projected MTJ, SHE)  | Eyeriss (16-bit fixed-point)  |
+| :--------------------: | :-------------------------: | :---------------------------: |
+|    Compute Latency     |           ~50 µs            |           ~0.03 µs            |
+|     Compute Energy     |           ~30 pJ            |            ~600 pJ            |
+| Initialization Latency |   ~4.48 µs (FRAM load 8B)   |  ~81.76 µs (FRAM load 146B)   |
+| Initialization Energy  |   ~3.2 nJ (FRAM load 8B)    |   ~58.4 nJ (FRAM load 146B)   |
+|    Restart Latency     |       0 µs (no FRAM)        |  ~81.76 µs (Similar to Init)  |
+|     Restart Energy     |       0 µs (no FRAM)        |  ~58.4 nJ (Similar to Init)   |
+|  Interruption Safety   | Yes - resumes transparently | No - must re-initialize fully |
 
 ## MOUSE (Projected MTJ, SHE) – Fully Non-Volatile and Interruption-Safe Design
 

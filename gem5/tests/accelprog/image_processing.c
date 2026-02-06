@@ -1,5 +1,6 @@
 #include "delay.h"
 #include "peripheral.h"
+#include "accel_reg.h"
 #include <stdint.h>
 
 // ==================== MINIMAL CONFIGURATION ====================
@@ -125,15 +126,16 @@ int main(void) {
     capture_image();
 
     // 2. Computing (repeated kernel execution - this is what you'll measure)
-    for (int i = 0; i < ITERATIONS; i++) {
+    for (int i = 0; i < 10; i++) {
         convolution_kernel();
     }
 
+    // convolution_kernel();
 
     uint8_t detection_result = detect_motion();
 
     // 3. Transmitting (minimal)
-    send_result(2);
+    send_result(1);
 
 #ifdef W_ACCEL
     accel_unmap_registers();

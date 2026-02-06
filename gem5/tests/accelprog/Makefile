@@ -6,17 +6,11 @@ ifeq ($(W_ACCEL), 1)
 	CFLAGS += -DW_ACCEL
 endif
 
-audio_processing: audio_processing.c accel_reg.o peripheral.o delay.o
-	$(CC) $(CFLAGS) -o audio_processing audio_processing.c peripheral.o accel_reg.o delay.o -static -lm
+image_processing_16x16: image_processing_16x16.c accel_reg.o peripheral.o delay.o camera.o
+	$(CC) $(CFLAGS) -o image_processing_16x16 image_processing_16x16.c peripheral.o accel_reg.o delay.o camera.o -static -lm
 
 image_processing: image_processing.c accel_reg.o peripheral.o delay.o camera.o
 	$(CC) $(CFLAGS) -o image_processing image_processing.c peripheral.o accel_reg.o delay.o camera.o -static -lm
-
-har: accel_reg.o peripheral.o delay.o har.c
-	$(CC) $(CFLAGS) -o har har.c peripheral.o accel_reg.o delay.o -static -lm
-
-noise_monitoring: accel_reg.o peripheral.o delay.o noise_monitoring.c
-	$(CC) $(CFLAGS) -o noise_monitoring noise_monitoring.c peripheral.o accel_reg.o delay.o -static
 
 test_w_accel: accel_reg.o peripheral.o delay.o test_w_accel.c
 	$(CC) $(CFLAGS) -o test_w_accel test_w_accel.c peripheral.o accel_reg.o delay.o -static
@@ -34,4 +28,4 @@ delay.o: delay.c delay.h
 	$(CC) -c delay.c
 
 clean:
-	rm accel_test *.o
+	rm -f accel_test *.o image_processing_16x16 image_processing test_w_accel
