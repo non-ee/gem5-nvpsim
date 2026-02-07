@@ -6,6 +6,9 @@ ifeq ($(W_ACCEL), 1)
 	CFLAGS += -DW_ACCEL
 endif
 
+image_processing_scale: image_processing_scale.c accel_reg.o peripheral.o delay.o camera.o
+	$(CC) $(CFLAGS) -o image_processing_scale image_processing_scale.c peripheral.o accel_reg.o delay.o camera.o -static -lm
+
 image_processing_16x16: image_processing_16x16.c accel_reg.o peripheral.o delay.o camera.o
 	$(CC) $(CFLAGS) -o image_processing_16x16 image_processing_16x16.c peripheral.o accel_reg.o delay.o camera.o -static -lm
 
@@ -18,10 +21,10 @@ test_w_accel: accel_reg.o peripheral.o delay.o test_w_accel.c
 accel_reg.o: accel_reg.c accel_reg.h
 	$(CC) -c accel_reg.c
 
-camera.o: peripheral.h camera.c
+camera.o: camera.c peripheral.h
 	$(CC) -c camera.c
 
-peripheral.o: peripheral.c camera.c peripheral.h
+peripheral.o: peripheral.c peripheral.h
 	$(CC) -c peripheral.c
 
 delay.o: delay.c delay.h

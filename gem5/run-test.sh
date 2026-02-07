@@ -9,11 +9,11 @@ rm m5out/batch_res.csv
 
 W_ACCEL=$1
 
-# trace="rf-cart"
+# trace="rf-mobile"
 trace="solar_10us_30s"
-cap=4
+cap=8
 profilemult=0.005
-prog="image_processing"
+prog="image_processing_scale"
 # prog="image_processing_16x16"
 
 arg_prog=""

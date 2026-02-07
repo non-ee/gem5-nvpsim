@@ -1,0 +1,5 @@
+Naive: 5220991000
+Strategy 2: 5215164000
+Strategy 2 (DB): 5194334000
+Strategy 3: 4707652000
+Strategy 4: 4708057000

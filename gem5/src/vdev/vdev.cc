@@ -189,6 +189,8 @@ VirtualDevice::triggerInterrupt()
 		cpu->virtualDeviceInterrupt(dev_name, 0);
 		cpu->virtualDeviceEnd(id);
 
+		need_recover = false;
+
 		// Todo: these are external added codes, which should be added in extension parts.
 		// if delay_remain > 0, means that a restart task is remaining
 		if (delay_remained > 0) {
@@ -424,7 +426,7 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
                 DPRINTF(VirtualDevice, "%s: WARNING: expected interrupt event not scheduled when powering off. curTick=%llu\n",
                         dev_name, (unsigned long long)curTick());
             }
-      		}
+  		}
 
 		// Reset vdev to be uninitialized.
 		*pmem |= VDEV_CHAOS;
@@ -438,9 +440,6 @@ VirtualDevice::handleMsg(const EnergyMsg &msg)
 	// Power-on: the device is power-on but not ready
 	else if (msg.type == SimpleEnergySM::MsgType::POWER_ON)
 	{
-	    if (!inTask)
-			return 1;
-
 		// EXTENTION: User defined Recover Procedure
 		if ( need_recover ) {
 			// start an re-initialization

@@ -89,7 +89,7 @@ void process_16x16_image(void) {
 }
 
 // ==================== SCALED SENSING ====================
-void capture_16x16_image(void) {
+void capture_image(int width, int height) {
     uint8_t *camera_reg;
     uint8_t pixel;
 
@@ -98,8 +98,8 @@ void capture_16x16_image(void) {
     periInit(camera_reg);
 
     // Capture 16x16 image
-    for (int y = 0; y < IMAGE_HEIGHT; y++) {
-        for (int x = 0; x < IMAGE_WIDTH; x++) {
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
             camCapturePixel(&pixel, camera_reg, x, y);
             input[y][x] = pixel;
             DelayUS(1);
@@ -153,7 +153,8 @@ int main(void) {
     accel_map_registers();
 #endif
 
-    capture_16x16_image();
+    // capture_image(IMAGE_WIDTH, IMAGE_HEIGHT);
+    capture_image(64, 64);
     process_16x16_image();
     uint8_t motion_detected = detect_motion_16x16();
 

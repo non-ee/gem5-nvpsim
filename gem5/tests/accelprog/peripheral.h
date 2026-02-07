@@ -11,7 +11,9 @@
 #define VDEV_INIT		0x80
 #define VDEV_EXEC		0x40
 #define VDEV_TURNOFF    0x20
+#define VDEV_CHAOS		0x08         // 0b00001000;
 #define VDEV_READY	    0x04
+#define VDEV_BUSY	    0x02
 #define VDEV_FINISH 	0x01
 
 static void * PERI_ADDR[3] = {
@@ -163,9 +165,6 @@ void    micSense(int16_t *sample, uint8_t *reg);
 
 // camera
 void    camCapturePixel(uint8_t *pixel, uint8_t *camera_reg, uint16_t x, uint16_t y);
-void    camCapturePixelScene(uint8_t *pixel, uint8_t *camera_reg, uint16_t x, uint16_t y);
-void    camCapturePixelSimple(uint8_t *pixel, uint8_t *camera_reg, uint16_t x, uint16_t y);
-void    camCapturePixelTest(uint8_t *pixel, uint8_t *camera_reg, uint16_t x, uint16_t y);
 
 void	rfTrans(uint8_t *cmd_reg);
 void    rfTransmitByte(uint8_t *cmd_reg);
