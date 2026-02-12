@@ -9,10 +9,11 @@ rm m5out/batch_res.csv
 
 W_ACCEL=$1
 
-# trace="rf-mobile"
-trace="solar_10us_30s"
-cap=8
-profilemult=0.005
+trace="rf-mobile"
+# trace="rf-obstruction"
+# trace="solar_10us_30s"
+cap=14
+profilemult=0.1
 prog="image_processing_scale"
 # prog="image_processing_16x16"
 
@@ -31,8 +32,8 @@ make clean -C tests/accelprog/
 make ${prog} -C tests/accelprog/ W_ACCEL=$W_ACCEL
 
 # FLAG=--debug-flag=VirtualDevice,SimpleCPU
-FLAG=--debug-flag=VirtualDevice,Accelerator
-# FLAG=--debug-flag=Accelerator
+# FLAG=--debug-flag=VirtualDevice,Accelerator
+FLAG=--debug-flag=Accelerator
 
 
 echo "========================================================="

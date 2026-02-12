@@ -38,12 +38,11 @@ int main(void) {
     accel_map_registers();
 #endif
 
-    // capture_image(IMAGE_WIDTH, IMAGE_HEIGHT);
     capture_image(IMAGE_WIDTH, IMAGE_HEIGHT);
-    // process_image_naive(SCALE);
+    process_image_naive(SCALE);
     // process_image_strategy2(SCALE);
     // process_image_strategy2_double_buffer(SCALE);
-    process_image_strategy2_hybrid(SCALE);
+    // process_image_strategy2_hybrid(SCALE);
     // process_image_strategy3(SCALE);
     uint8_t motion_detected = detect_motion_simple(SCALE);
 

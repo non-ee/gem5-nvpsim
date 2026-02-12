@@ -125,10 +125,7 @@ int main(void) {
     // 1. Sensing (minimal)
     capture_image();
 
-    // 2. Computing (repeated kernel execution - this is what you'll measure)
-    for (int i = 0; i < 10; i++) {
-        convolution_kernel();
-    }
+    convolution_kernel();
 
     // convolution_kernel();
 

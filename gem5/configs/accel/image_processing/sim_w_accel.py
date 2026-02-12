@@ -150,13 +150,6 @@ system.accel.is_interruptable = 0
 # system.accel.delay_cpu_interrupt = '25us'
 # system.accel.is_interruptable = 1
 
-## Sonic
-# system.accel.compute_unit = ImageProcessingUnit(latency="0.35ms")
-# system.accel.energy_per_cycle = [Float(0.0), Float(7.43), Float(1.2), Float(74.3)]
-# system.accel.delay_init = '50us'
-# system.accel.delay_cpu_interrupt = '25us'
-# system.accel.is_interruptable = 0
-
 
 ###################################
 ###########  Benchmark  ############
